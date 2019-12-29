@@ -1,10 +1,10 @@
 from io import BytesIO
-import os
-from tempfile import NamedTemporaryFile
 
 from PIL import Image
 from thumbor.engines import BaseEngine
 from thumbor.utils import logger, EXTENSION
+
+from thumbor_video_engine.utils import named_tmp_file
 
 
 VIDEO_EXTENSIONS = {'.mp4', '.webm', '.gifv', '.m4v', '.mov'}
@@ -91,19 +91,13 @@ class Engine(object):
         still_frame_pos = getattr(self.context.request, 'still_position', None)
         # Are we requesting a still frame?
         if self.engine is self.ffmpeg_engine and still_frame_pos:
-            src_file = NamedTemporaryFile(suffix=extension, delete=False)
-            src_file.write(buffer)
-            src_file.close()
-
-            try:
+            with named_tmp_file(data=buffer, suffix=extension) as src_file:
                 buffer = self.ffmpeg_engine.run_ffmpeg(
-                    src_file.name, 'png', ['-ss', still_frame_pos, '-frames:v', '1'])
+                    src_file, 'png', ['-ss', still_frame_pos, '-frames:v', '1'])
                 self.engine = self.image_engine
                 extension = '.png'
                 if not self.context.request.format:
                     self.context.request.format = 'jpg'
-            finally:
-                os.unlink(src_file.name)
 
         self.extension = extension
         self.engine.load(buffer, extension)

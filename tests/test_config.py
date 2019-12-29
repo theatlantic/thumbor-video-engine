@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import os
 
 import six
@@ -9,6 +10,7 @@ from thumbor.server import configure_log
 from thumbor.utils import which
 
 import thumbor_video_engine.engines.ffmpeg
+import thumbor_video_engine.utils
 from thumbor_video_engine.engines.ffmpeg import Engine
 
 
@@ -49,11 +51,15 @@ def mock_engine(context, mp4_buffer, mocker):
 
     engine = Engine(context)
 
+    @contextmanager
+    def mock_named_tmp_file(suffix=None, **kwargs):
+        suffix = suffix or ''
+        yield '/tmp/tempfile%s' % suffix
+
     mocker.patch.object(engine, 'ffprobe')
-    mocker.patch.object(thumbor_video_engine.engines.ffmpeg, 'NamedTemporaryFile',
-        wraps=MockNamedTemporaryFile)
+    mocker.patch.object(thumbor_video_engine.engines.ffmpeg, 'named_tmp_file',
+        wraps=mock_named_tmp_file)
     mocker.patch.object(six.moves.builtins, 'open', new_callable=mocker.mock_open())
-    mocker.patch.object(os, 'unlink')
     mocker.patch.object(engine, 'run_cmd', return_value=mp4_buffer)
 
     engine.load(mp4_buffer, '.mp4')

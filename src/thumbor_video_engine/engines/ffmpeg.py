@@ -1,10 +1,10 @@
 import copy
-import os
 from subprocess import Popen, PIPE
-from tempfile import NamedTemporaryFile
 
 from thumbor.engines import BaseEngine
 from thumbor.utils import logger
+
+from thumbor_video_engine.utils import named_tmp_file
 
 
 class FfmpegError(RuntimeError):
@@ -115,23 +115,18 @@ class Engine(BaseEngine):
         self.ffprobe(buffer, extension)
 
     def ffprobe(self, buffer, extension):
-        input_file = NamedTemporaryFile(suffix=extension, delete=False)
-        input_file.write(buffer)
-        input_file.close()
+        with named_tmp_file(data=buffer, suffix=extension) as input_file:
+            command = [
+                self.ffprobe_path, '-hide_banner',
+                '-show_entries', 'stream=height',
+                '-show_entries', 'stream=width',
+                '-show_entries', 'stream=r_frame_rate',
+                '-of', 'default=noprint_wrappers=1',
+                '-i', input_file,
+            ]
 
-        command = [
-            self.ffprobe_path, '-hide_banner',
-            '-show_entries', 'stream=height',
-            '-show_entries', 'stream=width',
-            '-show_entries', 'stream=r_frame_rate',
-            '-of', 'default=noprint_wrappers=1',
-            '-i', input_file.name,
-        ]
-        try:
             p = Popen(command, stdout=PIPE, stdin=PIPE, stderr=PIPE)
             stdout_data = p.communicate(input=self.buffer)[0]
-        finally:
-            os.unlink(input_file.name)
 
         if p.returncode != 0:
             raise FfmpegError(
@@ -176,32 +171,23 @@ class Engine(BaseEngine):
         else:
             out_format = FORMATS[extension]
 
-        src_file = NamedTemporaryFile(suffix=extension, delete=False)
-        src_file.write(self.buffer)
-        src_file.close()
-
-        try:
+        with named_tmp_file(data=self.buffer, suffix=extension) as src_file:
             if out_format in ('webm', 'vp9'):
-                return self.transcode_to_vp9(src_file.name)
+                return self.transcode_to_vp9(src_file)
             elif out_format in ('mp4', 'h264'):
-                return self.transcode_to_h264(src_file.name)
+                return self.transcode_to_h264(src_file)
             elif out_format in ('hevc', 'h265'):
-                return self.transcode_to_h265(src_file.name)
+                return self.transcode_to_h265(src_file)
             elif out_format == 'gif':
-                return self.transcode_to_gif(src_file.name)
-        finally:
-            os.unlink(src_file.name)
+                return self.transcode_to_gif(src_file)
 
-    def transcode_to_gif(self, src_filename):
-        try:
-            palette_file = NamedTemporaryFile(suffix='.png', delete=False)
-            palette_file.close()
-
+    def transcode_to_gif(self, src_file):
+        with named_tmp_file(suffix='.png') as palette_file:
             self.run_cmd([
                 self.ffmpeg_path, '-hide_banner',
-                '-i', src_filename,
+                '-i', src_file,
                 '-vf', 'palettegen',
-                '-y', palette_file.name,
+                '-y', palette_file,
             ])
 
             libav_filter = 'paletteuse'
@@ -211,8 +197,8 @@ class Engine(BaseEngine):
 
             gif_buffer = self.run_cmd([
                 self.ffmpeg_path, '-hide_banner',
-                '-i', src_filename,
-                '-i', palette_file.name,
+                '-i', src_file,
+                '-i', palette_file,
                 '-lavfi', libav_filter,
                 '-f', 'gif',
                 '-',
@@ -230,8 +216,6 @@ class Engine(BaseEngine):
                     gif_engine_method(*op_args)
 
             return gif_engine.read()
-        finally:
-            os.unlink(palette_file.name)
 
     @property
     def ffmpeg_vfilters(self):
@@ -249,7 +233,7 @@ class Engine(BaseEngine):
             'scale={0}:flags=lanczos'.format(':'.join([str(s) for s in self.image_size])))
         return vfilters
 
-    def transcode_to_vp9(self, src_filename):
+    def transcode_to_vp9(self, src_file):
         flags = [
             '-c:v', 'libvpx-vp9', '-loop', '0', '-an', '-pix_fmt', 'yuv420p',
             '-movflags', 'faststart', '-vf', ','.join(self.ffmpeg_vfilters),
@@ -273,9 +257,9 @@ class Engine(BaseEngine):
             flags += ['-minrate', "%s" % self.context.config.FFMPEG_VP9_MINRATE]
 
         two_pass = self.context.config.FFMPEG_VP9_TWO_PASS
-        return self.run_ffmpeg(src_filename, 'webm', flags=flags, two_pass=two_pass)
+        return self.run_ffmpeg(src_file, 'webm', flags=flags, two_pass=two_pass)
 
-    def transcode_to_h264(self, src_filename):
+    def transcode_to_h264(self, src_file):
         width, height = self.image_size
         # libx264 width and height must be divisible by 2
         if width % 2 or height % 2:
@@ -310,9 +294,9 @@ class Engine(BaseEngine):
             flags += ['-qmax', "%s" % self.context.config.FFMPEG_H264_QMAX]
 
         two_pass = self.context.config.FFMPEG_H264_TWO_PASS
-        return self.run_ffmpeg(src_filename, 'mp4', flags=flags, two_pass=two_pass)
+        return self.run_ffmpeg(src_file, 'mp4', flags=flags, two_pass=two_pass)
 
-    def transcode_to_h265(self, src_filename):
+    def transcode_to_h265(self, src_file):
         width, height = self.image_size
         # libx265 width and height must be divisible by 2
         if width % 2 or height % 2:
@@ -350,28 +334,21 @@ class Engine(BaseEngine):
         flags += ["-x265-params", ":".join(x265_params)]
 
         two_pass = self.context.config.FFMPEG_H265_TWO_PASS
-        return self.run_ffmpeg(src_filename, 'mp4', flags=flags, two_pass=two_pass)
+        return self.run_ffmpeg(src_file, 'mp4', flags=flags, two_pass=two_pass)
 
     def run_ffmpeg(self, input_file, out_format, flags=None, two_pass=False):
         flags = flags or []
-        # flags += ['-f', out_format]
 
-        out_file = NamedTemporaryFile(suffix='.%s' % out_format, delete=False)
-        out_file.close()
-
-        try:
+        with named_tmp_file(suffix='.%s' % out_format) as out_file:
             if not two_pass:
                 self.run_cmd([
                     self.ffmpeg_path, '-hide_banner',
                     '-i', input_file,
-                ] + flags + ['-y', out_file.name])
-                with open(out_file.name) as f:
+                ] + flags + ['-y', out_file])
+                with open(out_file) as f:
                     return f.read()
 
-            try:
-                passlogfile = NamedTemporaryFile(suffix='.log', delete=False)
-                passlogfile.close()
-
+            with named_tmp_file(suffix='.log') as passlogfile:
                 if '-x265-params' in flags:
                     params_idx = flags.index('-x265-params') + 1
                     if flags[params_idx]:
@@ -381,14 +358,14 @@ class Engine(BaseEngine):
                     pass_one_flags = copy.copy(flags)
                     pass_two_flags = copy.copy(flags)
                     pass_one_flags[params_idx] = ":".join(
-                        x265_params + ['pass=1', 'stats=%s' % passlogfile.name])
+                        x265_params + ['pass=1', 'stats=%s' % passlogfile])
                     pass_two_flags[params_idx] = ":".join(
-                        x265_params + ['pass=2', 'stats=%s' % passlogfile.name])
+                        x265_params + ['pass=2', 'stats=%s' % passlogfile])
                 else:
                     pass_one_flags = flags + [
-                        '-pass', '1', '-passlogfile', passlogfile.name]
+                        '-pass', '1', '-passlogfile', passlogfile]
                     pass_two_flags = flags + [
-                        '-pass', '2', '-passlogfile', passlogfile.name]
+                        '-pass', '2', '-passlogfile', passlogfile]
 
                 self.run_cmd([
                     self.ffmpeg_path, '-hide_banner',
@@ -398,14 +375,10 @@ class Engine(BaseEngine):
                 self.run_cmd([
                     self.ffmpeg_path, '-hide_banner',
                     '-i', input_file,
-                ] + pass_two_flags + ['-y', out_file.name])
+                ] + pass_two_flags + ['-y', out_file])
 
-                with open(out_file.name) as f:
+                with open(out_file) as f:
                     return f.read()
-            finally:
-                os.unlink(passlogfile.name)
-        finally:
-            os.unlink(out_file.name)
 
     def run_cmd(self, command):
         logger.debug("Running `%s`" % " ".join(command))
