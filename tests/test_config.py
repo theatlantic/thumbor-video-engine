@@ -103,6 +103,13 @@ def std_vp9_flags(ffmpeg_path, std_flags):
     ] + std_flags + ['-f', 'webm']
 
 
+@pytest.fixture
+def std_webp_flags(ffmpeg_path, std_flags):
+    return [
+        ffmpeg_path, '-hide_banner', '-i', '/tmp/tempfile.mp4', '-loop', '0',
+    ] + std_flags + ['-f', 'webp']
+
+
 def test_h264_two_pass(mock_engine, std_h264_flags, mocker):
     mock_engine.context.request.format = 'h264'
     mock_engine.context.config.FFMPEG_H264_TWO_PASS = True
@@ -208,4 +215,26 @@ def test_vp9_config(config_key, config_val, expected, mock_engine, std_vp9_flags
 
     assert mock_engine.run_cmd.mock_calls == [
         mocker.call(std_vp9_flags + expected + ['-y', '/tmp/tempfile.webm']),
+    ]
+
+
+@pytest.mark.parametrize("config_key,config_val,expected", [
+    ('FFMPEG_WEBP_LOSSLESS', True, ['-lossless', '1']),
+    ('FFMPEG_WEBP_COMPRESSION_LEVEL', '4', ['-compression_level', '4']),
+    ('FFMPEG_WEBP_QSCALE', '75', ['-qscale', '75']),
+    ('FFMPEG_WEBP_PRESET', 'drawing', ['-preset', 'drawing']),
+])
+def test_webp_config(config_key, config_val, expected, mock_engine, std_webp_flags, mocker):
+    mock_engine.context.request.format = 'webp'
+    setattr(mock_engine.context.config, config_key, config_val)
+
+    if config_key == 'FFMPEG_WEBP_LOSSLESS':
+        # Swap out pix_fmt for lossless webp
+        changes = {'yuv420p': 'rgba'}
+        std_webp_flags = [changes.get(f, f) for f in std_webp_flags]
+
+    mock_engine.read('.mp4', quality=80)
+
+    assert mock_engine.run_cmd.mock_calls == [
+        mocker.call(std_webp_flags + expected + ['-y', '/tmp/tempfile.webp']),
     ]

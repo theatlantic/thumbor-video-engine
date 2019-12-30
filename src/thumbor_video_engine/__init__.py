@@ -222,3 +222,30 @@ Config.define(
     None,
     'The -maxrate flag passed to ffmpeg for vp9 encoding',
     'Video')
+
+Config.define(
+    'FFMPEG_WEBP_LOSSLESS',
+    False,
+    '(-lossless) Enables/disables use of lossless mode. libwebp default is False',
+    'Video')
+
+Config.define(
+    'FFMPEG_WEBP_COMPRESSION_LEVEL',
+    None,
+    '(-compression_level) range 0-6, default 4. Higher values give better '
+    'quality but slower speed. For lossless, it controls the size/speed trade-off',
+    'Video')
+
+Config.define(
+    'FFMPEG_WEBP_QSCALE',
+    None,
+    '(-qscale) For lossy encoding, controls quality 0 to 100. For lossless, '
+    'controls cpu and time spent compressing. libwebp built-in default 75.',
+    'Video')
+
+Config.define(
+    'FFMPEG_WEBP_PRESET',
+    None,
+    '(-preset) Configuration preset. Consult ffmpeg libwebp codec documentation '
+    'for more information.',
+    'Video')

@@ -1,4 +1,7 @@
+from io import BytesIO
+
 import pytest
+from PIL import Image
 
 from ...utils import ffprobe
 
@@ -151,3 +154,18 @@ def test_h265_resize_odd_dimensions(http_client, base_url):
     actual = {k: stream.get(k) for k in expected}
 
     assert expected == actual
+
+
+@pytest.mark.gen_test
+def test_transcode_mp4_to_webp(http_client, base_url):
+    response = yield http_client.fetch("%s/unsafe/filters:format(webp)/hotdog.mp4" % base_url)
+
+    assert response.code == 200
+    assert response.headers.get('content-type') == 'image/webp'
+
+    im = Image.open(BytesIO(response.body))
+
+    assert im.format == 'WEBP'
+    assert im.is_animated is True
+    assert im.n_frames == 42
+    assert im.size == (200, 150)

@@ -1,10 +1,14 @@
+from contextlib import contextmanager
 import copy
+from decimal import Decimal
+from io import BytesIO
 from subprocess import Popen, PIPE
 
+from PIL import Image, ImageSequence
 from thumbor.engines import BaseEngine
 from thumbor.utils import logger
 
-from thumbor_video_engine.utils import named_tmp_file
+from thumbor_video_engine.utils import named_tmp_file, make_tmp_dir
 
 
 class FfmpegError(RuntimeError):
@@ -16,6 +20,7 @@ FORMATS = {
     '.webm': 'webm',
     '.gif': 'gif',
     '.gifv': 'mp4',
+    '.webp': 'webp',
 }
 
 
@@ -115,47 +120,65 @@ class Engine(BaseEngine):
         self.ffprobe(buffer, extension)
 
     def ffprobe(self, buffer, extension):
-        with named_tmp_file(data=buffer, suffix=extension) as input_file:
-            command = [
-                self.ffprobe_path, '-hide_banner',
-                '-show_entries', 'stream=height',
-                '-show_entries', 'stream=width',
-                '-show_entries', 'stream=r_frame_rate',
-                '-of', 'default=noprint_wrappers=1',
-                '-i', input_file,
-            ]
+        width, height = self.original_size
+        props = {
+            'width': width,
+            'height': height,
+            'fps': self.fps,
+        }
+        mime = self.get_mimetype(buffer)
+        if mime == 'image/webp':
+            im = Image.open(BytesIO(buffer))
+            props['width'], props['height'] = im.size
+        else:
+            with named_tmp_file(data=buffer, suffix=extension) as input_file:
+                props = self.get_ffprobe_info(input_file)
 
-            p = Popen(command, stdout=PIPE, stdin=PIPE, stderr=PIPE)
-            stdout_data = p.communicate(input=self.buffer)[0]
+        self.fps = props['fps']
+        width, height = props['width'], props['height']
+        self.original_size = width, height
+        self.crop_info = width, height, 0, 0
+        self.image_size = width, height
+
+    def get_ffprobe_info(self, input_file):
+        command = [
+            self.ffprobe_path, '-hide_banner',
+            '-show_entries', 'stream=height',
+            '-show_entries', 'stream=width',
+            '-show_entries', 'stream=r_frame_rate',
+            '-of', 'default=noprint_wrappers=1',
+            '-i', input_file,
+        ]
+
+        p = Popen(command, stdout=PIPE, stdin=PIPE, stderr=PIPE)
+        stdout_data, stderr = p.communicate()
 
         if p.returncode != 0:
+            logger.error(stderr)
             raise FfmpegError(
                 'ffprobe command returned errorlevel {0} for command "{1}"'.format(
                     p.returncode, ' '.join(command + [self.context.request.url])))
 
         logger.debug(stdout_data)
-        width, height = self.original_size
-        fps = self.fps
+        props = {
+            'width': self.original_size[0],
+            'height': self.original_size[1],
+            'fps': self.fps,
+        }
         for line in stdout_data.split('\n'):
             kv = line.split('=')
             if len(kv) == 2:
                 key, value = kv
-                if key == 'width':
-                    width = int(value)
-                elif key == 'height':
-                    height = int(value)
+                if key in ('width', 'height'):
+                    props[key] = int(value)
                 elif key == 'r_frame_rate':
                     a, b = value.split('/')
                     vb = float(b)
                     if vb > 0:
-                        fps = float(a) / vb
+                        props['fps'] = float(a) / vb
 
-        logger.debug('probe result: width={0}, height={1}, fps={2}'.format(
-            width, height, fps))
-        self.fps = fps
-        self.original_size = width, height
-        self.crop_info = width, height, 0, 0
-        self.image_size = width, height
+        logger.debug('probe result: width={width}, height={height}, fps={fps}'.format(**props))
+        return props
 
     def read(self, extension=None, quality=None):
         if quality is None:  # if quality is None, it's called in the storage missed
@@ -171,8 +194,10 @@ class Engine(BaseEngine):
         else:
             out_format = FORMATS[extension]
 
-        with named_tmp_file(data=self.buffer, suffix=extension) as src_file:
-            if out_format in ('webm', 'vp9'):
+        with self.make_src_file(extension) as src_file:
+            if out_format == 'webp':
+                return self.transcode_to_webp(src_file)
+            elif out_format in ('webm', 'vp9'):
                 return self.transcode_to_vp9(src_file)
             elif out_format in ('mp4', 'h264'):
                 return self.transcode_to_h264(src_file)
@@ -180,6 +205,59 @@ class Engine(BaseEngine):
                 return self.transcode_to_h265(src_file)
             elif out_format == 'gif':
                 return self.transcode_to_gif(src_file)
+
+    @contextmanager
+    def make_src_file(self, extension):
+        mime = self.get_mimetype(self.buffer)
+        is_webp = mime == 'image/webp'
+        if not is_webp:
+            with named_tmp_file(data=self.buffer, suffix=extension) as src_file:
+                yield src_file
+        else:
+            with make_tmp_dir() as tmp_dir:
+                im = Image.open(BytesIO(self.buffer))
+                num_frames = im.n_frames
+                num_digits = len(str(num_frames))
+                format_str = b"%(dir)s/%(idx)0{}d.tif".format(num_digits)
+                concat_buf = BytesIO()
+                concat_buf.write(b"ffconcat version 1.0\n")
+                concat_buf.write(b"# %dx%d\n" % im.size)
+                for i, frame in enumerate(ImageSequence.Iterator(im)):
+                    frame.load()
+                    duration_ms = im.info['duration']
+                    out_file = format_str % {'dir': tmp_dir, 'idx': i}
+                    frame.save(out_file, lossless=True)
+                    concat_buf.write(b"file '%s'\n" % out_file)
+                    concat_buf.write(b"duration %s\n" % (Decimal(duration_ms) / Decimal(1000)))
+                concat_buf.write(b"file '%s'\n" % out_file)
+                with named_tmp_file(data=concat_buf.getvalue(), suffix='.txt') as src_file:
+                    yield src_file
+
+    def transcode_to_webp(self, src_file):
+        if self.context.config.FFMPEG_WEBP_LOSSLESS:
+            is_lossless = True
+            pix_fmt = 'rgba'
+        else:
+            is_lossless = False
+            pix_fmt = 'yuv420p'
+
+        flags = [
+            '-loop', '0', '-an', '-pix_fmt', pix_fmt,
+            '-movflags', 'faststart', '-vf', ','.join(self.ffmpeg_vfilters),
+            '-f', 'webp',
+        ]
+        if is_lossless:
+            flags += ['-lossless', '1']
+        if self.context.config.FFMPEG_WEBP_COMPRESSION_LEVEL is not None:
+            flags += [
+                '-compression_level',
+                "%s" % self.context.config.FFMPEG_WEBP_COMPRESSION_LEVEL]
+        if self.context.config.FFMPEG_WEBP_QSCALE is not None:
+            flags += ['-qscale', "%s" % self.context.config.FFMPEG_WEBP_QSCALE]
+        if self.context.config.FFMPEG_WEBP_PRESET:
+            flags += ['-preset', "%s" % self.context.config.FFMPEG_WEBP_PRESET]
+
+        return self.run_ffmpeg(src_file, 'webp', flags=flags, two_pass=False)
 
     def transcode_to_gif(self, src_file):
         with named_tmp_file(suffix='.png') as palette_file:
@@ -339,10 +417,13 @@ class Engine(BaseEngine):
     def run_ffmpeg(self, input_file, out_format, flags=None, two_pass=False):
         flags = flags or []
 
+        input_flags = ['-f', 'concat', '-safe', '0'] if input_file.endswith('.txt') else []
+
         with named_tmp_file(suffix='.%s' % out_format) as out_file:
             if not two_pass:
                 self.run_cmd([
                     self.ffmpeg_path, '-hide_banner',
+                ] + input_flags + [
                     '-i', input_file,
                 ] + flags + ['-y', out_file])
                 with open(out_file) as f:
@@ -369,11 +450,13 @@ class Engine(BaseEngine):
 
                 self.run_cmd([
                     self.ffmpeg_path, '-hide_banner',
+                ] + input_flags + [
                     '-i', input_file,
                 ] + pass_one_flags + ['-y', '/dev/null'])
 
                 self.run_cmd([
                     self.ffmpeg_path, '-hide_banner',
+                ] + input_flags + [
                     '-i', input_file,
                 ] + pass_two_flags + ['-y', out_file])
 

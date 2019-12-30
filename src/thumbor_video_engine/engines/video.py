@@ -7,9 +7,6 @@ from thumbor.utils import logger, EXTENSION
 from thumbor_video_engine.utils import named_tmp_file
 
 
-VIDEO_EXTENSIONS = {'.mp4', '.webm', '.gifv', '.m4v', '.mov'}
-
-
 def patch_baseengine_get_mimetype():
     """
     Monkey-patch BaseEngine.get_mimetype() to recognize mp4 files with the hevc
@@ -42,6 +39,7 @@ class Engine(object):
         self.engine = None
         self.context = context
         self.ffmpeg_handle_animated_gif = context.config.FFMPEG_HANDLE_ANIMATED_GIF
+        self.ffmpeg_handle_animated_webp = True
         self.use_gif_engine = context.config.FFMPEG_USE_GIFSICLE_ENGINE
 
     @property
@@ -70,8 +68,13 @@ class Engine(object):
             extension = EXTENSION.get(mime, '.jpg')
 
         is_gif = extension == '.gif'
+        is_webp = extension == '.webp'
 
-        if is_gif and self.ffmpeg_handle_animated_gif and is_animated(buffer):
+        if is_webp and self.ffmpeg_handle_animated_webp and is_animated(buffer):
+            logger.debug("Setting engine to %s (extension %s)" % (
+                self.context.config.FFMPEG_ENGINE, extension))
+            self.engine = self.ffmpeg_engine
+        elif is_gif and self.ffmpeg_handle_animated_gif and is_animated(buffer):
             logger.debug("Setting engine to %s (extension %s)" % (
                 self.context.config.FFMPEG_ENGINE, extension))
             self.engine = self.ffmpeg_engine
@@ -105,6 +108,9 @@ class Engine(object):
     def is_multiple(self):
         return False
 
+    def cleanup(self):
+        pass
+
     def __getattr__(self, attr):
         if attr == 'engine':
             return self.__dict__['engine']
@@ -122,4 +128,4 @@ class Engine(object):
         elif self.engine:
             setattr(self.engine, attr, value)
         else:
-            raise AttributeError("Tried to set an unsupported attribute")
+            self.__dict__[attr] = value
