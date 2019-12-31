@@ -2,7 +2,9 @@ import os
 import pytest
 
 from thumbor.config import Config
-from thumbor.context import Context
+from thumbor.context import Context, ServerParameters, RequestParameters
+from thumbor.importer import Importer
+from thumbor.server import configure_log, get_application
 from thumbor.utils import which
 
 
@@ -34,4 +36,26 @@ def config(storage_path, ffmpeg_path):
 
 @pytest.fixture
 def context(config):
-    return Context(config=config)
+    config.ENGINE = 'thumbor_video_engine.engines.video'
+
+    importer = Importer(config)
+    importer.import_modules()
+
+    server = ServerParameters(
+        None, 'localhost', 'thumbor.conf', None, 'info', config.APP_CLASS,
+        gifsicle_path=which('gifsicle'))
+    server.security_key = config.SECURITY_KEY
+
+    req = RequestParameters()
+
+    configure_log(config, 'DEBUG')
+
+    with Context(server=server, config=config, importer=importer) as context:
+        context.request = req
+        context.request.engine = context.modules.engine
+        yield context
+
+
+@pytest.fixture
+def app(context):
+    return get_application(context)

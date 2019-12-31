@@ -4,35 +4,15 @@ import os
 import six
 import pytest
 
-from thumbor.context import Context, RequestParameters, ServerParameters
-from thumbor.importer import Importer
-from thumbor.server import configure_log
-from thumbor.utils import which
-
 import thumbor_video_engine.engines.ffmpeg
 import thumbor_video_engine.utils
 from thumbor_video_engine.engines.ffmpeg import Engine
 
 
 @pytest.fixture
-def context(config):
+def config(config):
     config.ENGINE = 'thumbor_video_engine.engines.ffmpeg'
-
-    importer = Importer(config)
-    importer.import_modules()
-
-    req = RequestParameters()
-
-    server = ServerParameters(8080, 'localhost', 'thumbor.conf', None, 'info', None)
-    server.security_key = config.SECURITY_KEY
-    server.gifsicle_path = which('gifsicle')
-
-    context = Context(server=server, config=config, importer=importer)
-    context.request = req
-    context.request.engine = context.modules.engine
-
-    configure_log(config, 'DEBUG')
-    return context
+    return config
 
 
 @pytest.fixture
