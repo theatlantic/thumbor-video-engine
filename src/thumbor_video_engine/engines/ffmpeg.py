@@ -38,7 +38,10 @@ class Engine(BaseEngine):
         super(Engine, self).__init__(context)
         self.ffmpeg_path = self.context.config.FFMPEG_PATH
         self.ffprobe_path = self.context.config.FFPROBE_PATH
-        self.use_gif_engine = context.config.FFMPEG_USE_GIFSICLE_ENGINE
+
+    @property
+    def use_gif_engine(self):
+        return self.context.config.FFMPEG_USE_GIFSICLE_ENGINE
 
     @property
     def size(self):
@@ -261,23 +264,23 @@ class Engine(BaseEngine):
 
     def transcode_to_gif(self, src_file):
         with named_tmp_file(suffix='.png') as palette_file:
+            if self.use_gif_engine:
+                libav_filter = 'scale=%d:%d:flags=lanczos' % self.original_size
+            else:
+                libav_filter = ','.join(self.ffmpeg_vfilters)
+
             self.run_cmd([
                 self.ffmpeg_path, '-hide_banner',
                 '-i', src_file,
-                '-vf', 'palettegen',
+                '-lavfi', "%s,palettegen" % libav_filter,
                 '-y', palette_file,
             ])
-
-            libav_filter = 'paletteuse'
-
-            if not self.use_gif_engine:
-                libav_filter += ",%s" % ','.join(self.ffmpeg_vfilters)
 
             gif_buffer = self.run_cmd([
                 self.ffmpeg_path, '-hide_banner',
                 '-i', src_file,
                 '-i', palette_file,
-                '-lavfi', libav_filter,
+                '-lavfi', "%s[x];[x][1:v]paletteuse" % libav_filter,
                 '-f', 'gif',
                 '-',
             ])

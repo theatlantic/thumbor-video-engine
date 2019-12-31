@@ -36,7 +36,13 @@ def test_transcode_mp4_to_webm(http_client, base_url):
 
 
 @pytest.mark.gen_test
-def test_transcode_mp4_to_gif(http_client, base_url):
+@pytest.mark.parametrize("config_key,config_val", [
+    ('FFMPEG_USE_GIFSICLE_ENGINE', False),
+    ('FFMPEG_USE_GIFSICLE_ENGINE', True),
+])
+def test_transcode_mp4_to_gif(config_key, config_val, http_client, base_url, config):
+    setattr(config, config_key, config_val)
+
     response = yield http_client.fetch("%s/unsafe/filters:format(gif)/hotdog.mp4" % base_url)
 
     assert response.code == 200
