@@ -236,8 +236,16 @@ class Engine(BaseEngine):
                 with named_tmp_file(data=concat_buf.getvalue(), suffix='.txt') as src_file:
                     yield src_file
 
+    def get_config(self, prop, format):
+        req_val = getattr(self.context.request, prop, None)
+        if req_val is not None:
+            return req_val
+        else:
+            config_key = ('ffmpeg_%s_%s' % (format, prop)).upper()
+            return getattr(self.context.config, config_key)
+
     def transcode_to_webp(self, src_file):
-        if self.context.config.FFMPEG_WEBP_LOSSLESS:
+        if self.get_config('lossless', 'webp'):
             is_lossless = True
             pix_fmt = 'rgba'
         else:
@@ -330,7 +338,7 @@ class Engine(BaseEngine):
             flags += ['-cpu-used', "%s" % self.context.config.FFMPEG_VP9_CPU_USED]
         if self.context.config.FFMPEG_VP9_ROW_MT:
             flags += ['-row-mt', '1']
-        if self.context.config.FFMPEG_VP9_LOSSLESS:
+        if self.get_config('lossless', 'vp9'):
             flags += ['-lossless', '1']
         if self.context.config.FFMPEG_VP9_MAXRATE:
             flags += ['-maxrate', "%s" % self.context.config.FFMPEG_VP9_MAXRATE]
