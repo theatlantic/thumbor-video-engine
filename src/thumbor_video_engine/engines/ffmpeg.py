@@ -11,7 +11,7 @@ from thumbor.utils import logger
 from thumbor_video_engine.utils import named_tmp_file, make_tmp_dir
 
 
-class FfmpegError(RuntimeError):
+class FFmpegError(RuntimeError):
     pass
 
 
@@ -158,7 +158,7 @@ class Engine(BaseEngine):
 
         if p.returncode != 0:
             logger.error(stderr)
-            raise FfmpegError(
+            raise FFmpegError(
                 'ffprobe command returned errorlevel {0} for command "{1}"'.format(
                     p.returncode, ' '.join(command + [self.context.request.url])))
 
@@ -487,4 +487,4 @@ class Engine(BaseEngine):
             err_msg += "\n%s" % stderr
             if self.context.request:
                 err_msg += "\n%s" % self.context.request.url
-            raise FfmpegError(err_msg)
+            raise FFmpegError(err_msg)

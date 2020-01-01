@@ -12,7 +12,7 @@ from thumbor.utils import which
 
 from PIL import Image
 
-from thumbor_video_engine.engines.ffmpeg import Engine as FfmpegEngine
+from thumbor_video_engine.engines.ffmpeg import Engine as FFmpegEngine
 
 from ..utils import ffprobe
 
@@ -155,9 +155,9 @@ def test_config_handle_animated_gif_true_use_gif_engine(mocker, config, http_cli
     config.FFMPEG_HANDLE_ANIMATED_GIF = True
 
     mocker.spy(GifEngine, 'load')
-    mocker.spy(FfmpegEngine, 'load')
+    mocker.spy(FFmpegEngine, 'load')
     mocker.spy(GifEngine, 'resize')
-    mocker.spy(FfmpegEngine, 'resize')
+    mocker.spy(FFmpegEngine, 'resize')
 
     response = yield http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
 
@@ -168,10 +168,10 @@ def test_config_handle_animated_gif_true_use_gif_engine(mocker, config, http_cli
     assert im.size == (100, 75)
 
     assert GifEngine.load.call_count == 1
-    assert FfmpegEngine.load.call_count == 1
+    assert FFmpegEngine.load.call_count == 1
 
     GifEngine.resize.assert_called_with(mocker.ANY, 100, 75)
-    FfmpegEngine.resize.assert_called_with(mocker.ANY, 100, 75)
+    FFmpegEngine.resize.assert_called_with(mocker.ANY, 100, 75)
 
 
 @pytest.mark.gen_test
@@ -180,9 +180,9 @@ def test_config_handle_animated_gif_true_no_use_gif_engine(mocker, config, http_
     config.FFMPEG_HANDLE_ANIMATED_GIF = True
 
     mocker.spy(GifEngine, 'load')
-    mocker.spy(FfmpegEngine, 'load')
+    mocker.spy(FFmpegEngine, 'load')
     mocker.spy(GifEngine, 'resize')
-    mocker.spy(FfmpegEngine, 'resize')
+    mocker.spy(FFmpegEngine, 'resize')
 
     response = yield http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
 
@@ -193,7 +193,7 @@ def test_config_handle_animated_gif_true_no_use_gif_engine(mocker, config, http_
     assert im.size == (100, 75)
 
     assert GifEngine.load.call_count == 0
-    assert FfmpegEngine.load.call_count == 1
+    assert FFmpegEngine.load.call_count == 1
 
     GifEngine.resize.mock_calls == []
-    FfmpegEngine.resize.assert_called_with(mocker.ANY, 100, 75)
+    FFmpegEngine.resize.assert_called_with(mocker.ANY, 100, 75)

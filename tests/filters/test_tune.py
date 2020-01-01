@@ -1,6 +1,6 @@
 import pytest
 
-from thumbor_video_engine.engines.ffmpeg import Engine as FfmpegEngine
+from thumbor_video_engine.engines.ffmpeg import Engine as FFmpegEngine
 
 from tests.utils import ffprobe
 
@@ -16,7 +16,7 @@ def config(config):
 
 @pytest.mark.gen_test(timeout=10)
 def test_h264_tune_filter(mocker, http_client, base_url, ffmpeg_path):
-    mocker.spy(FfmpegEngine, 'run_cmd')
+    mocker.spy(FFmpegEngine, 'run_cmd')
 
     response = yield http_client.fetch(
         "%s/unsafe/filters:tune(animation)/hotdog.mp4" % base_url)
@@ -24,9 +24,9 @@ def test_h264_tune_filter(mocker, http_client, base_url, ffmpeg_path):
     assert response.code == 200
     assert response.headers.get('content-type') == 'video/mp4'
 
-    FfmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
+    FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FfmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
 
     assert '-tune' in cmd
     assert cmd[cmd.index('-tune') + 1] == 'animation'
@@ -56,7 +56,7 @@ def test_h264_tune_filter(mocker, http_client, base_url, ffmpeg_path):
 
 @pytest.mark.gen_test(timeout=10)
 def test_h265_tune_filter(mocker, http_client, base_url, ffmpeg_path):
-    mocker.spy(FfmpegEngine, 'run_cmd')
+    mocker.spy(FFmpegEngine, 'run_cmd')
 
     response = yield http_client.fetch(
         "%s/unsafe/filters:tune(animation):format(h265)/hotdog.mp4" % base_url)
@@ -64,9 +64,9 @@ def test_h265_tune_filter(mocker, http_client, base_url, ffmpeg_path):
     assert response.code == 200
     assert response.headers.get('content-type') == 'video/mp4'
 
-    FfmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
+    FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FfmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
 
     assert '-tune' in cmd
     assert cmd[cmd.index('-tune') + 1] == 'animation'

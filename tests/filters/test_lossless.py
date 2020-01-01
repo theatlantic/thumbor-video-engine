@@ -3,7 +3,7 @@ from io import BytesIO
 import pytest
 from PIL import Image
 
-from thumbor_video_engine.engines.ffmpeg import Engine as FfmpegEngine
+from thumbor_video_engine.engines.ffmpeg import Engine as FFmpegEngine
 
 from tests.utils import ffprobe
 
@@ -17,14 +17,14 @@ def config(config):
 @pytest.mark.gen_test(timeout=10)
 @pytest.mark.parametrize("filter_val", ["1"])
 def test_webm_lossless_filter(mocker, http_client, base_url, ffmpeg_path, filter_val):
-    mocker.spy(FfmpegEngine, 'run_cmd')
+    mocker.spy(FFmpegEngine, 'run_cmd')
 
     response = yield http_client.fetch(
         "%s/unsafe/filters:lossless(%s)/hotdog.webm" % (base_url, filter_val))
 
-    FfmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
+    FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FfmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
 
     assert '-lossless' in cmd
     assert cmd[cmd.index('-lossless') + 1] == '1'
@@ -57,14 +57,14 @@ def test_webm_lossless_filter(mocker, http_client, base_url, ffmpeg_path, filter
 @pytest.mark.gen_test(timeout=15)
 @pytest.mark.parametrize("filter_val", ["1"])
 def test_webp_lossless_filter(mocker, http_client, base_url, ffmpeg_path, filter_val):
-    mocker.spy(FfmpegEngine, 'run_cmd')
+    mocker.spy(FFmpegEngine, 'run_cmd')
 
     response = yield http_client.fetch(
         "%s/unsafe/filters:lossless(%s)/hotdog.webp" % (base_url, filter_val))
 
-    FfmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
+    FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FfmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
 
     assert '-lossless' in cmd
     assert cmd[cmd.index('-lossless') + 1] == '1'
