@@ -259,14 +259,14 @@ class Engine(BaseEngine):
         ]
         if is_lossless:
             flags += ['-lossless', '1']
+        if self.context.config.FFMPEG_WEBP_PRESET:
+            flags += ['-preset', "%s" % self.context.config.FFMPEG_WEBP_PRESET]
         if self.context.config.FFMPEG_WEBP_COMPRESSION_LEVEL is not None:
             flags += [
                 '-compression_level',
                 "%s" % self.context.config.FFMPEG_WEBP_COMPRESSION_LEVEL]
         if self.context.config.FFMPEG_WEBP_QSCALE is not None:
             flags += ['-qscale', "%s" % self.context.config.FFMPEG_WEBP_QSCALE]
-        if self.context.config.FFMPEG_WEBP_PRESET:
-            flags += ['-preset', "%s" % self.context.config.FFMPEG_WEBP_PRESET]
 
         return self.run_ffmpeg(src_file, 'webp', flags=flags, two_pass=False)
 
@@ -361,6 +361,8 @@ class Engine(BaseEngine):
             '-vf', ','.join(self.ffmpeg_vfilters), '-f', 'mp4',
         ]
 
+        if self.get_config('tune', 'h264'):
+            flags += ['-tune', self.get_config('tune', 'h264')]
         if self.context.config.FFMPEG_H264_VBR is not None:
             flags += ['-b:v', "%s" % self.context.config.FFMPEG_H264_VBR]
         if self.context.config.FFMPEG_H264_CRF is not None:
@@ -373,8 +375,6 @@ class Engine(BaseEngine):
             flags += ['-preset', "%s" % self.context.config.FFMPEG_H264_PRESET]
         if self.context.config.FFMPEG_H264_BUFSIZE is not None:
             flags += ['-bufsize', "%s" % self.context.config.FFMPEG_H264_BUFSIZE]
-        if self.context.config.FFMPEG_H264_TUNE:
-            flags += ['-tune', self.context.config.FFMPEG_H264_TUNE]
         if self.context.config.FFMPEG_H264_MAXRATE:
             flags += ['-maxrate', "%s" % self.context.config.FFMPEG_H264_MAXRATE]
         if self.context.config.FFMPEG_H264_QMIN:
@@ -401,6 +401,8 @@ class Engine(BaseEngine):
 
         x265_params = []
 
+        if self.get_config('tune', 'h265'):
+            flags += ['-tune', self.get_config('tune', 'h265')]
         if self.context.config.FFMPEG_H265_VBR is not None:
             flags += ['-b:v', "%s" % self.context.config.FFMPEG_H265_VBR]
         if self.context.config.FFMPEG_H265_CRF is not None:
@@ -409,8 +411,6 @@ class Engine(BaseEngine):
             flags += ['-profile:v', "%s" % self.context.config.FFMPEG_H265_PROFILE]
         if self.context.config.FFMPEG_H265_PRESET:
             flags += ['-preset', "%s" % self.context.config.FFMPEG_H265_PRESET]
-        if self.context.config.FFMPEG_H265_TUNE:
-            flags += ['-tune', self.context.config.FFMPEG_H265_TUNE]
         if self.context.config.FFMPEG_H265_BUFSIZE is not None:
             x265_params += ["vbv-bufsize=%s" % self.context.config.FFMPEG_H265_BUFSIZE]
         if self.context.config.FFMPEG_H265_MAXRATE:
