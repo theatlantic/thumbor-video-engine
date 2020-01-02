@@ -20,6 +20,8 @@ addons:
     - libexiv2-dev
     - ffmpeg
 install:
-  - pip install tox
+  - pip install tox coverage codecov
 script:
   - tox
+  - coverage xml
+  - codecov -F python
