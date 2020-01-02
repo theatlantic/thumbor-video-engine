@@ -11,7 +11,7 @@ def get_long_description():
     with open(path.join(CURR_DIR, 'README.rst'), encoding='utf-8') as f:
         readme_rst = f.read()
         lines = readme_rst.split(u"\n")
-        return u"\n".join(lines[2:])
+        return u"\n".join(lines[10:])
 
 
 setup(
@@ -20,7 +20,7 @@ setup(
     description='An engine and tools for manipulating videos with thumbor using ffmpeg',
     long_description=get_long_description(),
     long_description_content_type='text/x-rst',
-    url='https://github.com/fdintino/thumbor-video-engine',
+    url='https://github.com/theatlantic/thumbor-video-engine',
     author='Frankie Dintino',
     author_email='fdintino@gmail.com',
     classifiers=[

@@ -1,6 +1,13 @@
 Thumbor Video Engine
 ====================
 
+|build_badge| |coverage_badge|
+
+.. |build_badge| image:: https://travis-ci.org/theatlantic/thumbor-video-engine.svg?branch=master
+    :target: https://travis-ci.org/theatlantic/thumbor-video-engine
+.. |coverage_badge| image:: https://codecov.io/gh/theatlantic/thumbor-video-engine/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/theatlantic/thumbor-video-engine
+
 This package provides a thumbor engine that can read, crop, and transcode mp4
 and webm videos using ffmpeg.
 
