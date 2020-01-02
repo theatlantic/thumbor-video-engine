@@ -112,6 +112,22 @@ def test_h265_two_pass(mock_engine, std_h265_flags, mocker):
             '-x265-params', 'pass=2:stats=/tmp/tempfile.log', '-y', '/tmp/tempfile.mp4'])]
 
 
+def test_h265_two_pass_with_x265_param(mock_engine, std_h265_flags, mocker):
+    mock_engine.context.request.format = 'h265'
+    mock_engine.context.config.FFMPEG_H265_TWO_PASS = True
+    mock_engine.context.config.FFMPEG_H265_CRF_MAX = 16
+
+    mock_engine.read('.mp4', quality=80)
+
+    assert mock_engine.run_cmd.mock_calls == [
+        mocker.call(std_h265_flags + [
+            '-x265-params', 'crf-max=16:pass=1:stats=/tmp/tempfile.log',
+            '-y', '/dev/null']),
+        mocker.call(std_h265_flags + [
+            '-x265-params', 'crf-max=16:pass=2:stats=/tmp/tempfile.log',
+            '-y', '/tmp/tempfile.mp4'])]
+
+
 def test_vp9_two_pass(mock_engine, std_vp9_flags, mocker):
     mock_engine.context.request.format = 'vp9'
     mock_engine.context.config.FFMPEG_VP9_TWO_PASS = True

@@ -80,15 +80,14 @@ class Engine(BaseEngine):
         return False
 
     def can_convert_to_webp(self):
-        return True
+        """We wouldn't want to auto-convert videos to webp, necessarily"""
+        return False
 
     def draw_rectangle(self, x, y, width, height):
         raise NotImplementedError()
 
     def resize(self, width, height):
         width, height = int(width), int(height)
-        if self.image_size == (width, height):
-            return
         self.resized = True
         self.operations.append(('resize', (width, height)))
         logger.debug('resize {0} {1}'.format(width, height))
@@ -96,10 +95,6 @@ class Engine(BaseEngine):
 
     def crop(self, left, top, right, bottom):
         left, top, right, bottom = int(left), int(top), int(right), int(bottom)
-
-        if self.crop_info == (left, top, right, bottom):
-            return
-
         self.cropped = True
         self.operations.append(('crop', (left, top, right, bottom)))
         logger.debug('crop {0} {1} {2} {3}'.format(left, top, right, bottom))
@@ -128,7 +123,7 @@ class Engine(BaseEngine):
         self.operations.append(('flip_horizontally', tuple()))
         self.flipped_horizontally = not self.flipped_horizontally
 
-    def convert_to_grayscale(self):
+    def convert_to_grayscale(self, update_image=True, alpha=True):
         self.operations.append(('convert_to_grayscale', tuple()))
         self.grayscale = True
 
