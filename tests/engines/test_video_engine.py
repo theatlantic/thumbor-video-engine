@@ -1,107 +1,19 @@
 from io import BytesIO
 import pytest
 
-from thumbor.app import ThumborServiceApp
-from thumbor.context import Context, RequestParameters, ServerParameters
 from thumbor.engines import BaseEngine
 from thumbor.engines.gif import Engine as GifEngine
 from thumbor.engines.pil import Engine as PilEngine
-from thumbor.importer import Importer
-from thumbor.server import configure_log
-from thumbor.utils import which
 
 from PIL import Image
 
 from thumbor_video_engine.engines.ffmpeg import Engine as FFmpegEngine
 
-from ..utils import ffprobe
-
 
 @pytest.fixture
-def app(context):
-    return ThumborServiceApp(context)
-
-
-@pytest.fixture
-def context(config, base_url):
-    config.ENGINE = 'thumbor_video_engine.engines.video'
+def config(config):
     config.FILTERS = ['thumbor_video_engine.filters.format']
-    configure_log(config, 'DEBUG')
-
-    importer = Importer(config)
-    importer.import_modules()
-
-    http_port = int(base_url.rpartition(':')[-1])
-    server = ServerParameters(http_port, 'localhost', 'thumbor.conf', None, 'info', None)
-    server.security_key = config.SECURITY_KEY
-    server.gifsicle_path = which('gifsicle')
-
-    context = Context(server=server, config=config, importer=importer)
-    context.request = RequestParameters()
-    context.request.engine = context.modules.engine
-
-    return context
-
-
-@pytest.mark.gen_test
-def test_mp4_loads(http_client, base_url):
-    response = yield http_client.fetch("%s/unsafe/hotdog.mp4" % base_url)
-
-    assert response.code == 200
-    assert response.headers.get('content-type') == 'video/mp4'
-
-    file_info = ffprobe(response.body)
-
-    assert file_info.get('errors') is None
-    assert 'streams' in file_info and 'format' in file_info
-    assert 'mp4' in file_info['format']['format_name']
-    assert len(file_info['streams']) == 1
-
-    stream = file_info['streams'][0]
-
-    expected = {
-        'codec_type': 'video',
-        'codec_name': 'h264',
-        'width': 200,
-        'height': 150,
-        'duration_ts': 420000,
-        'nb_frames': '42',
-        'pix_fmt': 'yuv420p',
-    }
-
-    actual = {k: stream.get(k) for k in expected}
-
-    assert expected == actual
-
-
-@pytest.mark.gen_test
-def test_gif_loads(http_client, base_url):
-    response = yield http_client.fetch("%s/unsafe/hotdog.gif" % base_url)
-
-    assert response.code == 200
-    assert response.headers.get('content-type') == 'image/gif'
-
-    file_info = ffprobe(response.body)
-
-    assert file_info.get('errors') is None
-    assert 'streams' in file_info and 'format' in file_info
-    assert file_info['format']['format_name'] == 'gif'
-    assert len(file_info['streams']) == 1
-
-    stream = file_info['streams'][0]
-
-    expected = {
-        'codec_type': 'video',
-        'codec_name': 'gif',
-        'width': 200,
-        'height': 150,
-        'nb_frames': '42',
-        'pix_fmt': 'bgra',
-    }
-
-    actual = {k: stream.get(k) for k in expected}
-
-    assert expected == actual
+    return config
 
 
 @pytest.mark.gen_test
