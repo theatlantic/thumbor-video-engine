@@ -36,17 +36,14 @@ def mock_engine(context, mp4_buffer, mocker):
         suffix = suffix or ''
         yield '/tmp/tempfile%s' % suffix
 
-    mocker.patch.object(engine, 'ffprobe')
+    mocker.patch.object(thumbor_video_engine.engines.ffmpeg, 'ffprobe',
+        return_value={'width': 200, 'height': 150, 'duration': '1.261000'})
     mocker.patch.object(thumbor_video_engine.engines.ffmpeg, 'named_tmp_file',
         wraps=mock_named_tmp_file)
     mocker.patch.object(six.moves.builtins, 'open', new_callable=mocker.mock_open())
     mocker.patch.object(engine, 'run_cmd', return_value=mp4_buffer)
 
     engine.load(mp4_buffer, '.mp4')
-    engine.fps = 33.3333
-    engine.width = engine.source_width = 200
-    engine.height = engine.source_height = 150
-    engine.image_size = (200, 150)
 
     return engine
 

@@ -1,0 +1,2 @@
+class FFmpegError(RuntimeError):
+    pass

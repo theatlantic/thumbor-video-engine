@@ -8,11 +8,9 @@ from PIL import Image, ImageSequence
 from thumbor.engines import BaseEngine
 from thumbor.utils import logger
 
+from thumbor_video_engine.exceptions import FFmpegError
+from thumbor_video_engine.ffprobe import ffprobe
 from thumbor_video_engine.utils import named_tmp_file, make_tmp_dir
-
-
-class FFmpegError(RuntimeError):
-    pass
 
 
 FORMATS = {
@@ -28,7 +26,7 @@ class Engine(BaseEngine):
 
     def __init__(self, context):
         self.original_size = 1, 1
-        self.fps = 5
+        self.duration = 0
         self.crop_info = 1, 1, 0, 0
         self.image_size = 1, 1
         self.rotate_degrees = 0
@@ -64,6 +62,17 @@ class Engine(BaseEngine):
     def source_height(self, height):
         orig_w, orig_h = self.original_size
         self.original_size = (orig_w, height)
+
+    @property
+    def original_size(self):
+        return self._original_size
+
+    @original_size.setter
+    def original_size(self, value):
+        width, height = value
+        self._original_size = width, height
+        self.crop_info = width, height, 0, 0
+        self.image_size = width, height
 
     def is_multiple(self):
         return False
@@ -118,70 +127,30 @@ class Engine(BaseEngine):
     def load(self, buffer, extension):
         self.extension = extension
         self.buffer = buffer
-        self.image = ''
         self.operations = []
-        self.ffprobe(buffer, extension)
-
-    def ffprobe(self, buffer, extension):
-        width, height = self.original_size
-        props = {
-            'width': width,
-            'height': height,
-            'fps': self.fps,
-        }
-        mime = self.get_mimetype(buffer)
-        if mime == 'image/webp':
-            im = Image.open(BytesIO(buffer))
-            props['width'], props['height'] = im.size
+        if self.get_mimetype(buffer) == 'image/webp':
+            self.image = Image.open(BytesIO(buffer))
         else:
-            with named_tmp_file(data=buffer, suffix=extension) as input_file:
-                props = self.get_ffprobe_info(input_file)
+            # self.image cannot be None, or the thumbor handler returns a 400
+            self.image = ''
+        self.probe()
 
-        self.fps = props['fps']
-        width, height = props['width'], props['height']
-        self.original_size = width, height
-        self.crop_info = width, height, 0, 0
-        self.image_size = width, height
-
-    def get_ffprobe_info(self, input_file):
-        command = [
-            self.ffprobe_path, '-hide_banner',
-            '-show_entries', 'stream=height',
-            '-show_entries', 'stream=width',
-            '-show_entries', 'stream=r_frame_rate',
-            '-of', 'default=noprint_wrappers=1',
-            '-i', input_file,
-        ]
-
-        p = Popen(command, stdout=PIPE, stdin=PIPE, stderr=PIPE)
-        stdout_data, stderr = p.communicate()
-
-        if p.returncode != 0:
-            logger.error(stderr)
-            raise FFmpegError(
-                'ffprobe command returned errorlevel {0} for command "{1}"'.format(
-                    p.returncode, ' '.join(command + [self.context.request.url])))
-
-        logger.debug(stdout_data)
-        props = {
-            'width': self.original_size[0],
-            'height': self.original_size[1],
-            'fps': self.fps,
-        }
-        for line in stdout_data.split('\n'):
-            kv = line.split('=')
-            if len(kv) == 2:
-                key, value = kv
-                if key in ('width', 'height'):
-                    props[key] = int(value)
-                elif key == 'r_frame_rate':
-                    a, b = value.split('/')
-                    vb = float(b)
-                    if vb > 0:
-                        props['fps'] = float(a) / vb
-
-        logger.debug('probe result: width={width}, height={height}, fps={fps}'.format(**props))
-        return props
+    def probe(self):
+        # If self.image, we have an animated image (e.g. webp) that ffmpeg
+        # cannot yet decode, but pillow can.
+        if self.image:
+            self.original_size = self.image.size
+            duration_ms = 0
+            # Load all frames, get the sum of all frames' durations
+            for frame in ImageSequence.Iterator(self.image):
+                frame.load()
+                duration_ms += frame.info['duration']
+            self.image.seek(0)
+            self.duration = Decimal(duration_ms) / Decimal(1000)
+        else:
+            ffprobe_data = ffprobe(self.buffer, extension=self.extension)
+            self.original_size = ffprobe_data['width'], ffprobe_data['height']
+            self.duration = Decimal(ffprobe_data['duration'])
 
     def read(self, extension=None, quality=None):
         if quality is None:  # if quality is None, it's called in the storage missed
@@ -218,7 +187,7 @@ class Engine(BaseEngine):
                 yield src_file
         else:
             with make_tmp_dir() as tmp_dir:
-                im = Image.open(BytesIO(self.buffer))
+                im = self.image
                 num_frames = im.n_frames
                 num_digits = len(str(num_frames))
                 format_str = b"%(dir)s/%(idx)0{}d.tif".format(num_digits)

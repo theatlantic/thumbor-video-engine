@@ -5,10 +5,12 @@ from tempfile import NamedTemporaryFile, mkdtemp
 
 
 @contextmanager
-def named_tmp_file(data=None, **kwargs):
+def named_tmp_file(data=None, extension=None, **kwargs):
     kwargs.setdefault('delete', False)
+    if extension is not None:
+        kwargs.setdefault('suffix', extension)
+    f = NamedTemporaryFile(**kwargs)
     try:
-        f = NamedTemporaryFile(**kwargs)
         if data:
             f.write(data)
         f.close()
