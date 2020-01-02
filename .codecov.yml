@@ -4,6 +4,5 @@ comment:
 
 coverage:
   status:
-    project: no
-    patch: no
-    changes: no
+    project: off
+    patch: off
