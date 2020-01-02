@@ -115,7 +115,7 @@ def test_transcode_to_gif(config_key, config_val, http_client, base_url, config,
 
 
 @pytest.mark.gen_test
-@pytest.mark.parametrize("src_ext", ['gif', 'mp4', 'h265.mp4', 'webm'])
+@pytest.mark.parametrize("src_ext", ['gif', 'mp4', 'h265.mp4', 'webm', 'webp'])
 def test_transcode_to_webp(http_client, base_url, src_ext):
     response = yield http_client.fetch(
         "%s/unsafe/filters:format(webp)/hotdog.%s" % (base_url, src_ext))

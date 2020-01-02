@@ -2,6 +2,7 @@ from contextlib import contextmanager
 import copy
 from decimal import Decimal
 from io import BytesIO
+import re
 from subprocess import Popen, PIPE
 
 from PIL import Image, ImageSequence
@@ -208,8 +209,8 @@ class Engine(BaseEngine):
                     frame.save(out_file, lossless=True)
                     concat_buf.write(b"file '%s'\n" % out_file)
                     concat_buf.write(b"duration %s\n" % (Decimal(duration_ms) / Decimal(1000)))
-                concat_buf.write(b"file '%s'\n" % out_file)
-                with named_tmp_file(data=concat_buf.getvalue(), suffix='.txt') as src_file:
+                self.buffer = concat_buf.getvalue()
+                with named_tmp_file(data=self.buffer, suffix='.txt') as src_file:
                     yield src_file
 
     def get_config(self, prop, format):
@@ -415,7 +416,18 @@ class Engine(BaseEngine):
     def run_ffmpeg(self, input_file, out_format, flags=None, two_pass=False):
         flags = flags or []
 
-        input_flags = ['-f', 'concat', '-safe', '0'] if input_file.endswith('.txt') else []
+        input_flags = []
+        # text files in concat-format require additional input flags
+        if input_file.endswith('.txt'):
+            input_flags += ['-f', 'concat', '-safe', '0']
+            txt_src = self.buffer.decode('utf-8')
+            # If all frames have the same duration, set the -r flag to ensure
+            # that no frames get dropped
+            durations = set(re.findall(r'duration ([\d\.]+)', txt_src))
+            if len(durations) == 1:
+                duration = list(durations)[0]
+                input_flags += ['-r', '1/%s' % duration]
+                flags += ['-r', '1/%s' % duration]
 
         with named_tmp_file(suffix='.%s' % out_format) as out_file:
             if not two_pass:

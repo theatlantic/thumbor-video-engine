@@ -64,5 +64,5 @@ def test_webp_lossless_filter(mocker, http_client, base_url, ffmpeg_path):
 
     assert im.format == 'WEBP'
     assert im.is_animated is True
-    assert im.n_frames == 34
+    assert im.n_frames == 42
     assert im.size == (200, 150)
