@@ -32,6 +32,8 @@ class Engine(BaseEngine):
         self.rotate_degrees = 0
         self.flipped_vertically = False
         self.flipped_horizontally = False
+        self.resized = False
+        self.cropped = False
         self.grayscale = False
         super(Engine, self).__init__(context)
         self.ffmpeg_path = self.context.config.FFMPEG_PATH
@@ -84,18 +86,28 @@ class Engine(BaseEngine):
         raise NotImplementedError()
 
     def resize(self, width, height):
+        width, height = int(width), int(height)
+        if self.image_size == (width, height):
+            return
+        self.resized = True
         self.operations.append(('resize', (width, height)))
         logger.debug('resize {0} {1}'.format(width, height))
-        self.image_size = int(width), int(height)
+        self.image_size = width, height
 
     def crop(self, left, top, right, bottom):
+        left, top, right, bottom = int(left), int(top), int(right), int(bottom)
+
+        if self.crop_info == (left, top, right, bottom):
+            return
+
+        self.cropped = True
         self.operations.append(('crop', (left, top, right, bottom)))
         logger.debug('crop {0} {1} {2} {3}'.format(left, top, right, bottom))
         old_out_width, old_out_height, old_left, old_top = self.crop_info
         old_width, old_height = self.image_size
 
-        width = int(right - left)
-        height = int(bottom - top)
+        width = right - left
+        height = bottom - top
         self.image_size = width, height
 
         out_width = int(1.0 * width / old_width * old_out_width)
@@ -221,11 +233,12 @@ class Engine(BaseEngine):
             is_lossless = False
             pix_fmt = 'yuv420p'
 
+        vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
+
         flags = [
-            '-loop', '0', '-an', '-pix_fmt', pix_fmt,
-            '-movflags', 'faststart', '-vf', ','.join(self.ffmpeg_vfilters),
-            '-f', 'webp',
-        ]
+            '-loop', '0', '-an', '-pix_fmt', pix_fmt, '-movflags', 'faststart',
+        ] + vf_flags + ['-f', 'webp']
+
         if is_lossless:
             flags += ['-lossless', '1']
         if self.context.config.FFMPEG_WEBP_PRESET:
@@ -241,13 +254,16 @@ class Engine(BaseEngine):
 
     def transcode_to_gif(self, src_file):
         with named_tmp_file(suffix='.png') as palette_file:
-            if self.use_gif_engine:
-                libav_filter = 'scale=%d:%d:flags=lanczos' % self.original_size
-            else:
+            if not self.use_gif_engine and self.ffmpeg_vfilters:
                 libav_filter = ','.join(self.ffmpeg_vfilters)
+            else:
+                libav_filter = 'scale=%d:%d:flags=lanczos' % self.original_size
+
+            input_flags = ['-f', 'concat', '-safe', '0'] if src_file.endswith('.txt') else []
 
             self.run_cmd([
                 self.ffmpeg_path, '-hide_banner',
+            ] + input_flags + [
                 '-i', src_file,
                 '-lavfi', "%s,palettegen" % libav_filter,
                 '-y', palette_file,
@@ -255,6 +271,7 @@ class Engine(BaseEngine):
 
             gif_buffer = self.run_cmd([
                 self.ffmpeg_path, '-hide_banner',
+            ] + input_flags + [
                 '-i', src_file,
                 '-i', palette_file,
                 '-lavfi', "%s[x];[x][1:v]paletteuse" % libav_filter,
@@ -284,19 +301,23 @@ class Engine(BaseEngine):
             vfilters.append('vflip')
         if self.flipped_horizontally:
             vfilters.append('hflip')
-        vfilters.append('rotate={0}'.format(self.rotate_degrees))
-        vfilters.append('crop={0}'.format(':'.join([str(i) for i in self.crop_info])))
+        if self.rotate_degrees != 0:
+            vfilters.append('rotate={0}'.format(self.rotate_degrees))
+        if self.cropped:
+            vfilters.append('crop={0}'.format(':'.join([str(i) for i in self.crop_info])))
         # scale must be the last one
-        vfilters.append(
-            'scale={0}:flags=lanczos'.format(':'.join([str(s) for s in self.image_size])))
+        if self.resized:
+            vfilters.append(
+                'scale={0}:flags=lanczos'.format(':'.join([str(s) for s in self.image_size])))
         return vfilters
 
     def transcode_to_vp9(self, src_file):
+        vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
         flags = [
             '-c:v', 'libvpx-vp9', '-loop', '0', '-an', '-pix_fmt', 'yuv420p',
-            '-movflags', 'faststart', '-vf', ','.join(self.ffmpeg_vfilters),
-            '-f', 'webm',
-        ]
+            '-movflags', 'faststart',
+        ] + vf_flags + ['-f', 'webm']
+
         if self.context.config.FFMPEG_VP9_VBR is not None:
             flags += ['-b:v', "%s" % self.context.config.FFMPEG_VP9_VBR]
         if self.context.config.FFMPEG_VP9_CRF is not None:
@@ -325,10 +346,11 @@ class Engine(BaseEngine):
             height = (height // 2) * 2
             self.resize(width, height)
 
+        vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
+
         flags = [
             '-c:v', 'libx264', '-an', '-pix_fmt', 'yuv420p', '-movflags', 'faststart',
-            '-vf', ','.join(self.ffmpeg_vfilters), '-f', 'mp4',
-        ]
+        ] + vf_flags + ['-f', 'mp4']
 
         if self.get_config('tune', 'h264'):
             flags += ['-tune', self.get_config('tune', 'h264')]
@@ -362,11 +384,12 @@ class Engine(BaseEngine):
             height = (height // 2) * 2
             self.resize(width, height)
 
+        vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
+
         flags = [
             '-c:v', 'hevc', '-tag:v', 'hvc1', '-an', '-pix_fmt', 'yuv420p',
-            '-movflags', 'faststart', '-vf', ','.join(self.ffmpeg_vfilters),
-            '-f', 'mp4',
-        ]
+            '-movflags', 'faststart',
+        ] + vf_flags + ['-f', 'mp4']
 
         x265_params = []
 

@@ -52,7 +52,6 @@ def mock_engine(context, mp4_buffer, mocker):
 def std_flags():
     return [
         '-an', '-pix_fmt', 'yuv420p', '-movflags', 'faststart',
-        '-vf', 'rotate=0,crop=1:1:0:0,scale=200:150:flags=lanczos',
     ]
 
 
