@@ -161,12 +161,12 @@ class Engine(BaseEngine):
             self.duration = Decimal(ffprobe_data['duration'])
 
     def read(self, extension=None, quality=None):
-        if quality is None:  # if quality is None, it's called in the storage missed
+        if quality is None:
             return self.buffer  # return the original data
         return self.transcode(extension)
 
     def transcode(self, extension):
-        if self.context.request.format:
+        if getattr(self.context.request, 'format', None):
             out_format = self.context.request.format
             if out_format in ('hevc', 'h264', 'h265'):
                 extension = '.mp4'
@@ -185,6 +185,8 @@ class Engine(BaseEngine):
                 return self.transcode_to_h265(src_file)
             elif out_format == 'gif':
                 return self.transcode_to_gif(src_file)
+            else:
+                raise FFmpegError("Invalid video format '%s' requested" % out_format)
 
     @contextmanager
     def make_src_file(self, extension):

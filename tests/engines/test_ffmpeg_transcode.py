@@ -132,6 +132,26 @@ def test_transcode_to_webp(http_client, base_url, src_ext):
 
 
 @pytest.mark.gen_test
+def test_transcode_webp_variable_frame_durations(http_client, base_url):
+    response = yield http_client.fetch(
+        "%s/unsafe/filters:format(webp)/hotdog-variable-frame-durations.webp" % base_url)
+
+    assert response.code == 200
+    assert response.headers.get('content-type') == 'image/webp'
+
+    im = Image.open(BytesIO(response.body))
+
+    assert im.format == 'WEBP'
+    assert im.is_animated is True
+    assert im.size == (200, 150)
+
+    # Assert that the first frame is 3x longer than the second
+    im.seek(0)
+    im.load()
+    assert im.info['duration'] == 120
+
+
+@pytest.mark.gen_test
 @pytest.mark.parametrize("codec", ['h264', 'hevc'])
 def test_mp4_resize_odd_dimensions(http_client, base_url, codec):
     """h264 and h265 require videos to have width and height be even integers"""

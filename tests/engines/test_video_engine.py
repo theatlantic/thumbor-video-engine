@@ -8,12 +8,24 @@ from thumbor.engines.pil import Engine as PilEngine
 from PIL import Image
 
 from thumbor_video_engine.engines.ffmpeg import Engine as FFmpegEngine
+from thumbor_video_engine.engines.video import Engine as VideoEngine
 
 
 @pytest.fixture
 def config(config):
     config.FILTERS = ['thumbor_video_engine.filters.format']
     return config
+
+
+@pytest.mark.gen_test
+def test_dispatch_to_video_engine(mocker, http_client, base_url):
+    mocker.spy(FFmpegEngine, 'load')
+
+    response = yield http_client.fetch("%s/unsafe/hotdog.mp4" % base_url)
+
+    assert response.code == 200
+    assert FFmpegEngine.load.call_count == 1
+    assert BaseEngine.get_mimetype(response.body) == 'video/mp4'
 
 
 @pytest.mark.gen_test
@@ -109,3 +121,38 @@ def test_config_handle_animated_gif_true_no_use_gif_engine(mocker, config, http_
 
     GifEngine.resize.mock_calls == []
     FFmpegEngine.resize.assert_called_with(mocker.ANY, 100, 75)
+
+
+def test_video_engine_getattr_dispatch(context):
+    video_engine = VideoEngine(context)
+    ffmpeg_engine = FFmpegEngine(context)
+    video_engine.engine = ffmpeg_engine
+    assert video_engine.reorientate == ffmpeg_engine.reorientate
+
+
+def test_video_engine_setattr_dispatch(mocker, context):
+    video_engine = VideoEngine(context)
+    mock = mocker.Mock()
+    video_engine.engine = mock
+    video_engine.foo = 'FOO'
+    assert mock.foo == 'FOO'
+
+
+def test_video_engine_getattr_attributeerror(context):
+    video_engine = VideoEngine(context)
+    with pytest.raises(AttributeError):
+        video_engine.size
+
+
+@pytest.mark.parametrize('attr,cls', [
+    ('image_engine', PilEngine),
+    ('ffmpeg_engine', FFmpegEngine),
+])
+def test_engine_properties(mocker, context, attr, cls):
+    mocker.spy(context.modules.importer, 'import_item')
+    video_engine = VideoEngine(context)
+    # Do twice to test value caching
+    for i in range(0, 2):
+        val = getattr(video_engine, attr)
+        assert isinstance(val, cls)
+    assert context.modules.importer.import_item.call_count == 1

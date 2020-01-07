@@ -16,12 +16,6 @@ def config(config):
 
 
 @pytest.fixture
-def mp4_buffer(storage_path):
-    with open(os.path.join(storage_path, 'hotdog.mp4'), mode='rb') as f:
-        return f.read()
-
-
-@pytest.fixture
 def mock_engine(context, mp4_buffer, mocker):
     class MockNamedTemporaryFile(mocker.Mock):
         def __init__(self, suffix=None, **kwargs):

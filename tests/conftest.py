@@ -22,6 +22,12 @@ def ffmpeg_path():
 
 
 @pytest.fixture
+def mp4_buffer(storage_path):
+    with open(os.path.join(storage_path, 'hotdog.mp4'), mode='rb') as f:
+        return f.read()
+
+
+@pytest.fixture
 def config(storage_path, ffmpeg_path):
     Config.allow_environment_variables()
     return Config(

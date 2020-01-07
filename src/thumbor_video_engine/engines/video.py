@@ -2,7 +2,7 @@ from io import BytesIO
 
 from PIL import Image
 from thumbor.engines import BaseEngine
-from thumbor.utils import logger, EXTENSION
+from thumbor.utils import logger
 
 from thumbor_video_engine.utils import named_tmp_file
 
@@ -64,8 +64,6 @@ class Engine(object):
 
     def load(self, buffer, extension):
         mime = BaseEngine.get_mimetype(buffer)
-        if extension is None:
-            extension = EXTENSION.get(mime, '.jpg')
 
         is_gif = extension == '.gif'
         is_webp = extension == '.webp'
@@ -112,9 +110,7 @@ class Engine(object):
         pass
 
     def __getattr__(self, attr):
-        if attr == 'engine':
-            return self.__dict__['engine']
-        elif not self.__dict__.get('engine'):
+        if not self.__dict__.get('engine'):
             raise AttributeError("'Engine' object has no attribute '%s'" % attr)
         return getattr(self.engine, attr)
 

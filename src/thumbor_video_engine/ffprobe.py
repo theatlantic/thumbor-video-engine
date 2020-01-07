@@ -38,17 +38,10 @@ def ffprobe(buf, extension=None, flat=True):
 
         stdout, stderr = proc.communicate()
 
-        if proc.returncode != 0:
-            raise FFmpegError(
-                "ffprobe returned error %(returncode)s for command '%(command)s': "
-                "%(stdout)s\n%(stderr)s" % {
-                    'returncode': proc.returncode,
-                    'command': " ".join(command),
-                    'stdout': stdout,
-                    'stderr': stderr,
-                })
-
-        probe_data = json.loads(stdout)
+        try:
+            probe_data = json.loads(stdout)
+        except ValueError:
+            probe_data = None
 
         if not isinstance(probe_data, dict):
             raise FFmpegError("ffprobe returned invalid data")
