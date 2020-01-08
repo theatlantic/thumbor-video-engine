@@ -16,7 +16,7 @@ def get_long_description():
 
 setup(
     name='thumbor-video-engine',
-    version='1.0.0',
+    version='1.0.1',
     description='An engine and tools for manipulating videos with thumbor using ffmpeg',
     long_description=get_long_description(),
     long_description_content_type='text/x-rst',
@@ -24,16 +24,13 @@ setup(
     author='Frankie Dintino',
     author_email='fdintino@gmail.com',
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'Topic :: Software Development',
         'Environment :: Web Environment',
         'License :: OSI Approved :: BSD License',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
     ],
     packages=find_packages('src'),
     package_dir={'': 'src'},
