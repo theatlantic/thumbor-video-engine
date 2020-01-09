@@ -81,8 +81,11 @@ class Engine(BaseEngine):
         return False
 
     def can_convert_to_webp(self):
-        """We wouldn't want to auto-convert videos to webp, necessarily"""
-        return False
+        """
+        We wouldn't want to auto-convert videos to webp, but animated gifs
+        should be fair game
+        """
+        return self.context.config.FFMPEG_GIF_AUTO_WEBP and self.extension == '.gif'
 
     def draw_rectangle(self, x, y, width, height):
         raise NotImplementedError()

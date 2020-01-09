@@ -4,7 +4,9 @@ import pytest
 
 from PIL import Image
 from thumbor.engines import BaseEngine
+from thumbor.utils import which
 
+import thumbor_video_engine.engines.gif
 from thumbor_video_engine.engines.gif import Engine as GifEngine
 
 
@@ -12,6 +14,12 @@ from thumbor_video_engine.engines.gif import Engine as GifEngine
 def config(config):
     config.GIF_ENGINE = 'thumbor_video_engine.engines.gif'
     return config
+
+
+@pytest.fixture
+def gif_buffer(storage_path):
+    with open("%s/hotdog.gif" % storage_path, mode="rb") as f:
+        return f.read()
 
 
 @pytest.mark.gen_test
@@ -35,3 +43,37 @@ def test_operations_resize_colors(mocker, config, http_client, base_url):
 
     im = Image.open(BytesIO(response.body))
     assert im.size == (100, 75)
+
+
+def test_server_gifsicle_none_calls_which(mocker, context, gif_buffer):
+    assert which('gifsicle') is not None, "Test cannot run without gifsicle in PATH"
+
+    mocker.spy(thumbor_video_engine.engines.gif, 'which')
+    mocker.spy(GifEngine, 'run_gifsicle')
+
+    context.server.gifsicle_path = None
+
+    engine = GifEngine(context)
+    engine.load(gif_buffer, '.gif')
+
+    assert GifEngine.run_gifsicle.mock_calls == [
+        mocker.call(mocker.ANY, '--info'),
+    ]
+    assert thumbor_video_engine.engines.gif.which.mock_calls == [mocker.call('gifsicle')]
+    assert context.server.gifsicle_path == which('gifsicle')
+
+
+def test_server_gifsicle_none_no_which_raises(mocker, context, gif_buffer):
+    mocker.patch.object(thumbor_video_engine.engines.gif, 'which', return_value=None)
+    mocker.spy(GifEngine, 'run_gifsicle')
+
+    context.server.gifsicle_path = None
+
+    engine = GifEngine(context)
+    with pytest.raises(RuntimeError):
+        engine.load(gif_buffer, '.gif')
+
+    assert GifEngine.run_gifsicle.mock_calls == [
+        mocker.call(mocker.ANY, '--info'),
+    ]
+    assert thumbor_video_engine.engines.gif.which.mock_calls == [mocker.call('gifsicle')]

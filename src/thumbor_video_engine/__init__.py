@@ -14,6 +14,12 @@ Config.define(
     'Video')
 
 Config.define(
+    'GIFSICLE_PATH',
+    None,
+    'The path to the gifsicle binary',
+    'Imaging')
+
+Config.define(
     'FFMPEG_USE_GIFSICLE_ENGINE',
     False,
     'Equivalent to USE_GIFSICLE_ENGINE, but for the ffmpeg engine',
@@ -23,6 +29,14 @@ Config.define(
     'FFMPEG_HANDLE_ANIMATED_GIF',
     True,
     'Whether to process animated gifs with the ffmpeg engine',
+    'Video')
+
+Config.define(
+    'FFMPEG_GIF_AUTO_WEBP',
+    True,
+    'Specifies whether animated WebP format should be used automatically if '
+    'the source image is an animated gif and the request accepts it (via '
+    'Accept header)',
     'Video')
 
 Config.define(

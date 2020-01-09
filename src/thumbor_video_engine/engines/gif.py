@@ -4,6 +4,7 @@
 # Copyright (c) 2015 Wikimedia Foundation
 
 from thumbor.engines.gif import Engine as BaseEngine
+from thumbor.utils import which
 
 
 class Engine(BaseEngine):
@@ -17,3 +18,12 @@ class Engine(BaseEngine):
         # improve the results. The following option allows Gifsicle to add
         # intermediate colors for images that have fewer than 64 input colors.
         self.operations.append("--resize-colors 64")
+
+    def run_gifsicle(self, command):
+        if not self.context.server.gifsicle_path:
+            gifsicle_path = self.context.config.GIFSICLE_PATH or which('gifsicle')
+            if not gifsicle_path:
+                raise RuntimeError(
+                    "gif engine was requested, but gifsicle binary cannot be found")
+            self.context.server.gifsicle_path = gifsicle_path
+        return super(Engine, self).run_gifsicle(command)
