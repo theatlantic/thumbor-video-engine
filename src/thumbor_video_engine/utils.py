@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 import os
 import shutil
+from struct import unpack
 from tempfile import NamedTemporaryFile, mkdtemp
 
 
@@ -26,3 +27,17 @@ def make_tmp_dir():
         yield tmp_dir
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def is_mp4(buf):
+    if buf[4:8] != b'ftyp':
+        return False
+    (ftyp_box_len,) = unpack('>L', buf[:4])
+    if not (20 <= ftyp_box_len <= 256) or (ftyp_box_len % 4) != 0:
+        return False
+    major_brand = unpack('4s', buf[8:12])
+    compat_brand_len = ftyp_box_len - 16
+    fmt = '4s' * (compat_brand_len // 4)
+    compat_brands = unpack(fmt, buf[16:ftyp_box_len])
+    all_brands = set(major_brand + compat_brands)
+    return bool(all_brands & {'isom', 'avc1', 'iso2', 'mp41', 'mp42'})

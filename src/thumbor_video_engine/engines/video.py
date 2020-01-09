@@ -4,13 +4,12 @@ from PIL import Image
 from thumbor.engines import BaseEngine
 from thumbor.utils import logger
 
-from thumbor_video_engine.utils import named_tmp_file
+from thumbor_video_engine.utils import named_tmp_file, is_mp4
 
 
 def patch_baseengine_get_mimetype():
     """
-    Monkey-patch BaseEngine.get_mimetype() to recognize mp4 files with the hevc
-    (aka h265) codec as video/mp4
+    Monkey-patch BaseEngine.get_mimetype() to recognize all mp4 files as video/mp4
     """
     orig_get_mimetype = BaseEngine.get_mimetype
 
@@ -18,7 +17,7 @@ def patch_baseengine_get_mimetype():
         mimetype = orig_get_mimetype(buffer)
         if mimetype is not None:
             return mimetype
-        elif buffer.startswith('\x00\x00\x00\x1cftyp'):
+        elif is_mp4(buffer):
             return 'video/mp4'
 
     BaseEngine.get_mimetype = classmethod(get_mimetype)
