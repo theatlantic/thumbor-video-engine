@@ -40,4 +40,4 @@ def is_mp4(buf):
     fmt = '4s' * (compat_brand_len // 4)
     compat_brands = unpack(fmt, buf[16:ftyp_box_len])
     all_brands = set(major_brand + compat_brands)
-    return bool(all_brands & {'isom', 'avc1', 'iso2', 'mp41', 'mp42'})
+    return bool(all_brands & {b'isom', b'avc1', b'iso2', b'mp41', b'mp42'})
