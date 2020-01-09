@@ -1,6 +1,13 @@
 Changelog
 =========
 
+**1.0.2 (unreleased)**
+
+* Feature: Support auto conversion of animated gif to animated webp if
+  AUTO_WEBP is True
+* Fixed: Ensure that all mp4s, regardless of ftyp box size, are recognized as
+  such
+
 **1.0.1 (Jan 8, 2020)**
 
 * Fixed: Addressed an issue where frames would sometimes get dropped when
