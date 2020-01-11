@@ -1,12 +1,12 @@
 Changelog
 =========
 
-**1.0.2 (unreleased)**
+**1.0.2 (Jan 11, 2020)**
 
 * Feature: Support auto conversion of animated gif to animated webp if
-  AUTO_WEBP is True
-* Fixed: Ensure that all mp4s, regardless of ftyp box size, are recognized as
-  such
+  ``AUTO_WEBP`` is ``True``.
+* Fixed: Ensure that all mp4s, regardless of ``ftyp`` box size, are recognized
+  as such.
 
 **1.0.1 (Jan 8, 2020)**
 
