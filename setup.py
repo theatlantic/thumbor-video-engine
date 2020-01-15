@@ -7,16 +7,29 @@ from io import open
 CURR_DIR = path.abspath(path.dirname(__file__))
 
 
+def read(rel_path):
+    with open(path.join(CURR_DIR, rel_path), encoding='utf-8') as f:
+        return f.read()
+
+
 def get_long_description():
-    with open(path.join(CURR_DIR, 'README.rst'), encoding='utf-8') as f:
-        readme_rst = f.read()
-        lines = readme_rst.split(u"\n")
-        return u"\n".join(lines[10:])
+    readme_rst = read('README.rst')
+    lines = readme_rst.split(u"\n")
+    return u"\n".join(lines[10:])
+
+
+def get_version():
+    for line in read('src/thumbor_video_engine/__init__.py').splitlines():
+        if line.startswith('__version__'):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
 
 
 setup(
     name='thumbor-video-engine',
-    version='1.0.2',
+    version=get_version(),
     description='An engine and tools for manipulating videos with thumbor using ffmpeg',
     long_description=get_long_description(),
     long_description_content_type='text/x-rst',

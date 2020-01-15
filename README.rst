@@ -8,8 +8,9 @@ Thumbor Video Engine
 .. |coverage_badge| image:: https://codecov.io/gh/theatlantic/thumbor-video-engine/branch/master/graph/badge.svg
     :target: https://codecov.io/gh/theatlantic/thumbor-video-engine
 
-This package provides a thumbor engine that can read, crop, and transcode mp4
-and webm videos using ffmpeg.
+This package provides a thumbor engine that can read, crop, and transcode
+audio-less video files. It supports input and output of animated GIF, animated
+WebP, WebM (VP9) video, and MP4 (default H.264, but HEVC is also supported).
 
 Usage
 -----
@@ -21,8 +22,8 @@ To enable this engine, add the following setting to your thumbor.conf:
     ENGINE = 'thumbor_video_engine.engines.video'
 
 For non-video files, this engine will fall back to using ``'thumbor.engines.pil'``.
+An alternative image engine fallback can be configured by setting ``IMAGING_ENGINE``.
 
-To enable transcoding to mp4 (h264 or hevc), webm, and animated gif from other
-video formats, add ``'thumbor_video_engine.filters.format'`` to your
-``FILTERS`` setting. If ``'thumbor.filters.format'`` is already there, replace
-it with the filter from this package.
+To enable transcoding between formats, add ``'thumbor_video_engine.filters.format'``
+to your ``FILTERS`` setting. If ``'thumbor.filters.format'`` is already there,
+replace it with the filter from this package.

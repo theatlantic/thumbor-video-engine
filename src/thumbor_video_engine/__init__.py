@@ -1,6 +1,9 @@
 from thumbor.config import Config
 
 
+__version__ = "1.0.2"
+
+
 Config.define(
     'IMAGE_ENGINE',
     'thumbor.engines.pil',
