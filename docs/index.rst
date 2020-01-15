@@ -22,17 +22,25 @@ need to download or install from source, or to report any issues.
 Setup
 =====
 
-In your thumbor configuration file, change the ``ENGINE`` setting to enable
-video support:
-
-.. code-block:: python
-
-    ENGINE = 'thumbor_video_engine.engines.video'
-
+In your thumbor configuration file, change the ``ENGINE`` setting to
+``'thumbor_video_engine.engines.video'`` to enable video support.
 This will allow thumbor to support video files in addition to whatever image
 formats it already supports. If the file passed to thumbor is an image, it will
 use the Engine specified by the configuration setting ``IMAGING_ENGINE``
 (which defaults to ``'thumbor.engines.pil'``).
+
+To enable transcoding between formats, add ``'thumbor_video_engine.filters.format'``
+to your ``FILTERS`` setting. If ``'thumbor.filters.format'`` is already present,
+replace it with the filter from this package.
+
+.. code-block:: python
+
+    ENGINE = 'thumbor_video_engine.engines.video'
+    FILTERS = [
+        'thumbor_video_engine.filters.format',
+        'thumbor_video_engine.filters.still',
+    ]
+    
 
 Contents
 --------
@@ -41,6 +49,7 @@ Contents
    :maxdepth: 2
 
    configuration
+   filters
    changelog
 
 License
