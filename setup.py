@@ -15,7 +15,7 @@ def read(rel_path):
 def get_long_description():
     readme_rst = read('README.rst')
     lines = readme_rst.split(u"\n")
-    return u"\n".join(lines[10:])
+    return u"\n".join(lines[12:])
 
 
 def get_version():

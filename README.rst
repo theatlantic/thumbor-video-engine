@@ -1,12 +1,14 @@
 Thumbor Video Engine
 ====================
 
-|build_badge| |coverage_badge|
+|build_badge| |coverage_badge| |docs_badge|
 
 .. |build_badge| image:: https://travis-ci.org/theatlantic/thumbor-video-engine.svg?branch=master
     :target: https://travis-ci.org/theatlantic/thumbor-video-engine
 .. |coverage_badge| image:: https://codecov.io/gh/theatlantic/thumbor-video-engine/branch/master/graph/badge.svg
     :target: https://codecov.io/gh/theatlantic/thumbor-video-engine
+.. |docs_badge| image:: https://readthedocs.org/projects/thumbor-video-engine/badge/?version=latest
+    :target: https://thumbor-video-engine.readthedocs.io/en/latest/
 
 This package provides a thumbor engine that can read, crop, and transcode
 audio-less video files. It supports input and output of animated GIF, animated
