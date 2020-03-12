@@ -5,7 +5,10 @@ from thumbor.config import Config
 from thumbor.context import Context, ServerParameters, RequestParameters
 from thumbor.importer import Importer
 from thumbor.server import configure_log, get_application
-from thumbor.utils import which
+try:
+    from shutil import which
+except ImportError:
+    from thumbor.utils import which
 
 
 CURR_DIR = os.path.abspath(os.path.dirname(__file__))

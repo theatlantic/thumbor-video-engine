@@ -1,7 +1,5 @@
 from contextlib import contextmanager
-import os
 
-import six
 import pytest
 
 import thumbor_video_engine.engines.ffmpeg
@@ -34,7 +32,8 @@ def mock_engine(context, mp4_buffer, mocker):
         return_value={'width': 200, 'height': 150, 'duration': '1.261000'})
     mocker.patch.object(thumbor_video_engine.engines.ffmpeg, 'named_tmp_file',
         wraps=mock_named_tmp_file)
-    mocker.patch.object(six.moves.builtins, 'open', new_callable=mocker.mock_open())
+    mocker.patch.object(thumbor_video_engine.engines.ffmpeg, 'open',
+        new_callable=mocker.mock_open())
     mocker.patch.object(engine, 'run_cmd', return_value=mp4_buffer)
 
     engine.load(mp4_buffer, '.mp4')

@@ -4,7 +4,10 @@
 # Copyright (c) 2015 Wikimedia Foundation
 
 from thumbor.engines.gif import Engine as BaseEngine
-from thumbor.utils import which
+try:
+    from shutil import which
+except ImportError:
+    from thumbor.utils import which
 
 
 class Engine(BaseEngine):

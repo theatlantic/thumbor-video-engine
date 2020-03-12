@@ -48,5 +48,4 @@ setup(
     packages=find_packages('src'),
     package_dir={'': 'src'},
     install_requires=['thumbor'],
-    python_requires='>=2.7, <3',
     zip_safe=False)

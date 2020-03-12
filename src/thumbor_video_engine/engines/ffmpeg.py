@@ -1,7 +1,9 @@
+from __future__ import unicode_literals
+
 from contextlib import contextmanager
 import copy
 from decimal import Decimal
-from io import BytesIO
+from io import BytesIO, open
 import re
 from subprocess import Popen, PIPE
 
@@ -203,7 +205,7 @@ class Engine(BaseEngine):
                 im = self.image
                 num_frames = im.n_frames
                 num_digits = len(str(num_frames))
-                format_str = b"%(dir)s/%(idx)0{}d.tif".format(num_digits)
+                format_str = "%(dir)s/%(idx)0{}d.tif".format(num_digits)
                 concat_buf = BytesIO()
                 concat_buf.write(b"ffconcat version 1.0\n")
                 concat_buf.write(b"# %dx%d\n" % im.size)
@@ -212,8 +214,9 @@ class Engine(BaseEngine):
                     duration_ms = im.info['duration']
                     out_file = format_str % {'dir': tmp_dir, 'idx': i}
                     frame.save(out_file, lossless=True)
-                    concat_buf.write(b"file '%s'\n" % out_file)
-                    concat_buf.write(b"duration %s\n" % (Decimal(duration_ms) / Decimal(1000)))
+                    concat_buf.write(b"file '%s'\n" % out_file.encode('utf-8'))
+                    duration_str = "%s" % (Decimal(duration_ms) / Decimal(1000))
+                    concat_buf.write(b"duration %s\n" % duration_str.encode('utf-8'))
                 self.buffer = concat_buf.getvalue()
                 with named_tmp_file(data=self.buffer, suffix='.txt') as src_file:
                     yield src_file
@@ -441,7 +444,7 @@ class Engine(BaseEngine):
                 ] + input_flags + [
                     '-i', input_file,
                 ] + flags + ['-y', out_file])
-                with open(out_file) as f:
+                with open(out_file, mode='rb') as f:
                     return f.read()
 
             with named_tmp_file(suffix='.log') as passlogfile:
@@ -475,7 +478,7 @@ class Engine(BaseEngine):
                     '-i', input_file,
                 ] + pass_two_flags + ['-y', out_file])
 
-                with open(out_file) as f:
+                with open(out_file, mode='rb') as f:
                     return f.read()
 
     def run_cmd(self, command):

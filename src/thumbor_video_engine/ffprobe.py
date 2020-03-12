@@ -3,7 +3,10 @@ import os
 from subprocess import Popen, PIPE
 
 import six
-from thumbor.utils import which
+try:
+    from shutil import which
+except ImportError:
+    from thumbor.utils import which
 
 from thumbor_video_engine.exceptions import FFmpegError
 from thumbor_video_engine.utils import named_tmp_file

@@ -4,7 +4,10 @@ import pytest
 
 from PIL import Image
 from thumbor.engines import BaseEngine
-from thumbor.utils import which
+try:
+    from shutil import which
+except ImportError:
+    from thumbor.utils import which
 
 import thumbor_video_engine.engines.gif
 from thumbor_video_engine.engines.gif import Engine as GifEngine

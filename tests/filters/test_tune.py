@@ -26,7 +26,7 @@ def test_h264_tune_filter(mocker, http_client, base_url, ffmpeg_path):
 
     FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0][1][1]
 
     assert '-tune' in cmd
     assert cmd[cmd.index('-tune') + 1] == 'animation'
@@ -55,7 +55,7 @@ def test_h265_tune_filter(mocker, http_client, base_url, ffmpeg_path):
 
     FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0][1][1]
 
     assert '-tune' in cmd
     assert cmd[cmd.index('-tune') + 1] == 'animation'

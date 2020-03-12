@@ -23,7 +23,7 @@ def test_webm_lossless_filter(mocker, http_client, base_url, ffmpeg_path):
 
     FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0][1][1]
 
     assert '-lossless' in cmd
     assert cmd[cmd.index('-lossless') + 1] == '1'
@@ -52,7 +52,7 @@ def test_webp_lossless_filter(mocker, http_client, base_url, ffmpeg_path):
 
     FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0][1][1]
 
     assert '-lossless' in cmd
     assert cmd[cmd.index('-lossless') + 1] == '1'

@@ -26,7 +26,7 @@ def test_crop(mocker, http_client, base_url):
     FFmpegEngine.crop.assert_called_once_with(mocker.ANY, 50, 25, 150, 125)
     FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0][1][1]
 
     assert '-vf' in cmd
     assert cmd[cmd.index('-vf') + 1] == 'crop=100:100:50:25'
@@ -48,7 +48,7 @@ def test_flip_horizontally(mocker, http_client, base_url):
     FFmpegEngine.flip_horizontally.assert_called_once()
     FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0][1][1]
 
     assert '-vf' in cmd
     assert cmd[cmd.index('-vf') + 1] == 'hflip'
@@ -70,7 +70,7 @@ def test_flip_vertically(mocker, http_client, base_url):
     FFmpegEngine.flip_vertically.assert_called_once()
     FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0][1][1]
 
     assert '-vf' in cmd
     assert cmd[cmd.index('-vf') + 1] == 'vflip'
@@ -92,7 +92,7 @@ def test_filter_grayscale(mocker, http_client, base_url):
     FFmpegEngine.convert_to_grayscale.assert_called_once()
     FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0][1][1]
 
     assert '-vf' in cmd
     assert cmd[cmd.index('-vf') + 1] == 'hue=s=0'
@@ -114,7 +114,7 @@ def test_filter_rotate(mocker, http_client, base_url):
     FFmpegEngine.rotate.assert_called_once_with(mocker.ANY, 90)
     FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
 
-    cmd = FFmpegEngine.run_cmd.mock_calls[0].args[1]
+    cmd = FFmpegEngine.run_cmd.mock_calls[0][1][1]
 
     assert '-vf' in cmd
     assert cmd[cmd.index('-vf') + 1] == 'rotate=90'
