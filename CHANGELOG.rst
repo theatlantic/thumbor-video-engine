@@ -1,6 +1,10 @@
 Changelog
 =========
 
+**1.1.0 (unreleased)***
+
+* Added support for python 3 and thumbor 7 alpha
+
 **1.0.2 (Jan 11, 2020)**
 
 * Feature: Support auto conversion of animated gif to animated webp if
