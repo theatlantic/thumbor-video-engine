@@ -13,7 +13,7 @@ from thumbor.utils import logger
 
 from thumbor_video_engine.exceptions import FFmpegError
 from thumbor_video_engine.ffprobe import ffprobe
-from thumbor_video_engine.utils import named_tmp_file, make_tmp_dir
+from thumbor_video_engine.utils import named_tmp_file, make_tmp_dir, has_transparency
 
 
 FORMATS = {
@@ -141,12 +141,18 @@ class Engine(BaseEngine):
         self.extension = extension
         self.buffer = buffer
         self.operations = []
-        if self.get_mimetype(buffer) == 'image/webp':
+        if self.get_mimetype(buffer).startswith('image/'):
             self.image = Image.open(BytesIO(buffer))
         else:
             # self.image cannot be None, or the thumbor handler returns a 400
             self.image = ''
         self.probe()
+
+    def has_transparency(self):
+        if self.image:
+            return has_transparency(self.image)
+        else:
+            return False
 
     def probe(self):
         # If self.image, we have an animated image (e.g. webp) that ffmpeg
@@ -230,11 +236,10 @@ class Engine(BaseEngine):
             return getattr(self.context.config, config_key)
 
     def transcode_to_webp(self, src_file):
-        if self.get_config('lossless', 'webp'):
-            is_lossless = True
+        is_lossless = self.get_config('lossless', 'webp')
+        if is_lossless or self.has_transparency():
             pix_fmt = 'rgba'
         else:
-            is_lossless = False
             pix_fmt = 'yuv420p'
 
         vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
