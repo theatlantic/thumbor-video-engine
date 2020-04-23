@@ -4,6 +4,7 @@ import pytest
 from PIL import Image
 
 from thumbor_video_engine.ffprobe import ffprobe
+from thumbor_video_engine.utils import has_transparency
 
 
 @pytest.fixture
@@ -171,3 +172,46 @@ def test_mp4_resize_odd_dimensions(http_client, base_url, codec):
     }
     actual = {k: file_info.get(k) for k in expected}
     assert expected == actual
+
+
+@pytest.mark.gen_test
+@pytest.mark.parametrize("src_ext", ['gif', 'webp'])
+def test_alpha_transcode_to_webp(http_client, base_url, src_ext):
+    response = yield http_client.fetch(
+        "%s/unsafe/filters:format(webp)/pbj-time.%s" % (base_url, src_ext))
+
+    assert response.code == 200
+    assert response.headers.get('content-type') == 'image/webp'
+
+    im = Image.open(BytesIO(response.body))
+
+    assert im.mode == 'RGBA'
+    assert im.format == 'WEBP'
+
+    assert has_transparency(im)
+
+    assert im.is_animated is True
+    assert im.n_frames == 8
+    assert im.size == (200, 200)
+
+
+@pytest.mark.gen_test
+@pytest.mark.parametrize("src_ext", ['gif', 'webp'])
+def test_alpha_transcode_to_gif(http_client, base_url, src_ext):
+    response = yield http_client.fetch(
+        "%s/unsafe/filters:format(gif)/pbj-time.%s" % (base_url, src_ext))
+
+    assert response.code == 200
+    assert response.headers.get('content-type') == 'image/gif'
+
+    im = Image.open(BytesIO(response.body))
+
+    assert im.mode == 'P'
+    assert im.info['transparency'] == im.info['background']
+
+    assert has_transparency(im)
+
+    assert im.format == 'GIF'
+    assert im.is_animated is True
+    assert im.n_frames == 8
+    assert im.size == (200, 200)

@@ -41,3 +41,11 @@ def is_mp4(buf):
     compat_brands = unpack(fmt, buf[16:ftyp_box_len])
     all_brands = set(major_brand + compat_brands)
     return bool(all_brands & {b'isom', b'avc1', b'iso2', b'mp41', b'mp42'})
+
+
+def has_transparency(im):
+    if 'A' in im.mode or 'transparency' in im.info:
+        # If the image has alpha channel, we check for any pixels that are not opaque (255)
+        return min(im.convert('RGBA').getchannel('A').getextrema()) < 255
+    else:
+        return False
