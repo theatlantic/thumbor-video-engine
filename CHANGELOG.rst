@@ -1,7 +1,7 @@
 Changelog
 =========
 
-**1.1.0 (unreleased)***
+**1.1.0 (May 29, 2020)***
 
 * Added support for python 3 and thumbor 7 alpha
 * Fixed: conversion to animated webp now retains alpha transparency (from gif or webp)
