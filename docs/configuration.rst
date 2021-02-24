@@ -48,6 +48,12 @@ looks for gifsicle in ``PATH``. This is only used if ``GIF_ENGINE`` is set to
 ``'thumbor_video_engines.engines.gif'``. As of version 6.7.0, thumbor does not
 support configuring this value.
 
+GIFSICLE\_ARGS
+~~~~~~~~~~~~~~
+
+A list of additional args to pass to gifsicle. This is only used if
+``GIF_ENGINE`` is set to ``'thumbor_video_engines.engines.gif'``.
+
 FFMPEG\_USE\_GIFSICLE\_ENGINE
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

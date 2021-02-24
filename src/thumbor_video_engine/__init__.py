@@ -1,7 +1,7 @@
 from thumbor.config import Config
 
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 
 Config.define(
@@ -20,6 +20,12 @@ Config.define(
     'GIFSICLE_PATH',
     None,
     'The path to the gifsicle binary',
+    'Imaging')
+
+Config.define(
+    'GIFSICLE_ARGS',
+    [],
+    'Additional CLI arguments to pass to gifsicle',
     'Imaging')
 
 Config.define(

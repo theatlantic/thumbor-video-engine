@@ -29,4 +29,6 @@ class Engine(BaseEngine):
                 raise RuntimeError(
                     "gif engine was requested, but gifsicle binary cannot be found")
             self.context.server.gifsicle_path = gifsicle_path
+        if self.context.config.GIFSICLE_ARGS:
+            command += " %s" % " ".join(self.context.config.GIFSICLE_ARGS)
         return super(Engine, self).run_gifsicle(command)

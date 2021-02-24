@@ -1,6 +1,11 @@
 Changelog
 =========
 
+**1.1.1 (unreleased)**
+
+* Added ``GIFSICLE_ARGS`` setting, which allows customization of arguments
+  passed to the gifsicle binary.
+
 **1.1.0 (May 29, 2020)***
 
 * Added support for python 3 and thumbor 7 alpha
