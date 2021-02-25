@@ -128,7 +128,6 @@ def test_transcode_to_webp(http_client, base_url, src_ext):
 
     assert im.format == 'WEBP'
     assert im.is_animated is True
-    assert im.n_frames == 42
     assert im.size == (200, 150)
 
 
@@ -191,7 +190,6 @@ def test_alpha_transcode_to_webp(http_client, base_url, src_ext):
     assert has_transparency(im)
 
     assert im.is_animated is True
-    assert im.n_frames == 8
     assert im.size == (200, 200)
 
 
@@ -213,5 +211,4 @@ def test_alpha_transcode_to_gif(http_client, base_url, src_ext):
 
     assert im.format == 'GIF'
     assert im.is_animated is True
-    assert im.n_frames == 8
     assert im.size == (200, 200)

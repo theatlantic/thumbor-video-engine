@@ -36,5 +36,4 @@ def test_auto_webp_transcodes_anim_gif(http_client, base_url, accepts_webp,
 
     assert im.format == img_format.upper()
     assert im.is_animated is True
-    assert im.n_frames == 42
     assert im.size == (200, 150)

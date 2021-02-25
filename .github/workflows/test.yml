@@ -1,0 +1,100 @@
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["2.7", "3.7"]
+        include:
+          - python-version: "2.7"
+            python-bin: python2
+          - python-version: "3.7"
+            python-bin: python3
+        
+
+    runs-on: ubuntu-latest
+    name: Python ${{ matrix.python-version }}
+
+    env:
+      FFMPEG_BUILD_VER: 20210119-553eb07737
+      GIFSICLE_VER: 1.92
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install ffmpeg
+      run: |
+        curl -sLo - \
+            https://github.com/theatlantic/ffmpeg-build-script/releases/download/ffmpeg-${{ env.FFMPEG_BUILD_VER }}/ffmpeg-linux-${{ env.FFMPEG_BUILD_VER }}.tar.gz | \
+            sudo tar -C /usr/bin -zxf -
+
+    - name: Install gifsicle
+      run: |
+        curl -sLo - http://www.lcdf.org/gifsicle/gifsicle-1.92.tar.gz | \
+            tar Czxf . -
+        cd gifsicle-${{ env.GIFSICLE_VER }}
+        ./configure --prefix=/usr
+        sudo make install
+        rm -rf gifsicle-${{ env.GIFSICLE_VER }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libcurl4-openssl-dev
+
+    - name: Install tox
+      run: |
+       ${{ matrix.python-bin }} -m pip install --upgrade pip
+       ${{ matrix.python-bin }} -m pip install tox tox-gh-actions wheel
+
+    - name: Run tests
+      run: |
+        tox -- -v
+
+    - name: Upload junit xml
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: junit-reports
+        path: reports/*.xml
+
+    - name: Combine coverage
+      run: tox -e coverage-report
+
+    - name: Upload coverage
+      run: tox -e codecov
+      env:
+        CODECOV_NAME: ${{ github.workflow }}
+
+  report:
+    if: always()
+    needs: build
+    runs-on: ubuntu-latest
+    name: "Report Test Results"
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: junit-reports
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1.8
+        if: always()
+        with:
+          files: ./*.xml
+          report_individual_runs: true
+
+  success:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Test Successful
+    steps:
+      - name: Success
+        run: echo Test Successful
