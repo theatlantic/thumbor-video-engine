@@ -1,7 +1,7 @@
 Changelog
 =========
 
-**1.1.1 (unreleased)**
+**1.1.1 (Feb 25, 2021)**
 
 * Added ``GIFSICLE_ARGS`` setting, which allows customization of arguments
   passed to the gifsicle binary.
