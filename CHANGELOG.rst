@@ -1,7 +1,7 @@
 Changelog
 =========
 
-**1.2.0 (unreleased)**
+**1.2.0 (Jul 19, 2021)**
 
 * Added an ``APP_CLASS`` ``"thumbor_video_engine.app.ThumborServiceApp"``
   that ensures appropriate ``Vary: Accept`` header is returned for requests
