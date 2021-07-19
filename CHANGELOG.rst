@@ -1,6 +1,17 @@
 Changelog
 =========
 
+**1.2.0 (unreleased)**
+
+* Added an ``APP_CLASS`` ``"thumbor_video_engine.app.ThumborServiceApp"``
+  that ensures appropriate ``Vary: Accept`` header is returned for requests
+  that automatically convert animated gifs based on Accept headers.
+* Added settings ``FFMPEG_GIF_AUTO_H264`` and ``FFMPEG_GIF_AUTO_H265`` that
+  enable auto-conversion of animated gifs to H264 or H265 (respectively) when
+  ``video/*`` is present in a request's ``Accept`` header.
+* Added custom result storage classes that ensures animated gifs auto-converted
+  to mp4 are stored distinctly from animated gifs or auto-webp images.
+
 **1.1.1 (Feb 25, 2021)**
 
 * Added ``GIFSICLE_ARGS`` setting, which allows customization of arguments

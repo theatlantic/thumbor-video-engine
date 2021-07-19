@@ -272,3 +272,19 @@ Config.define(
     '(-preset) Configuration preset. Consult ffmpeg libwebp codec documentation '
     'for more information.',
     'Video')
+
+Config.define(
+    'FFMPEG_GIF_AUTO_H264',
+    False,
+    'Specifies whether an H264 mp4 should be returned automatically if '
+    'the source image is an animated gif and the request accepts it (via '
+    'Accept: video/* header)',
+    'Video')
+
+Config.define(
+    'FFMPEG_GIF_AUTO_H265',
+    False,
+    'Specifies whether an H265 mp4 should be returned automatically if '
+    'the source image is an animated gif and the request accepts it (via '
+    'Accept: video/* header)',
+    'Video')

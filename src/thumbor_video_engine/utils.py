@@ -1,8 +1,11 @@
 from contextlib import contextmanager
+from io import BytesIO
 import os
 import shutil
 from struct import unpack
 from tempfile import NamedTemporaryFile, mkdtemp
+
+from PIL import Image
 
 
 @contextmanager
@@ -49,3 +52,52 @@ def has_transparency(im):
         return min(im.convert('RGBA').getchannel('A').getextrema()) < 255
     else:
         return False
+
+
+def is_animated(buffer):
+    im = Image.open(BytesIO(buffer))
+    return getattr(im, 'is_animated', False)
+
+
+def ord_compat(val):
+    if isinstance(val, int):
+        return val
+    else:
+        return ord(val)
+
+
+def is_animated_gif(buffer):
+    if buffer[:6] not in [b"GIF87a", b"GIF89a"]:
+        return False
+    i = 10  # skip header
+    frames = 0
+
+    def skip_color_table(i, flags):
+        if flags & 0x80:
+            i += 3 << ((flags & 7) + 1)
+        return i
+
+    flags = ord_compat(buffer[i])
+
+    i = skip_color_table(i + 3, flags)
+    while frames < 2:
+        block = buffer[i]
+        i += 1
+        if block in (b'\x3B', 0x3B):
+            break
+        if block in (b'\x21', 0x21):
+            i += 1
+        elif block in (b'\x2C', 0x2C):
+            frames += 1
+            i += 8
+            i = skip_color_table(i + 1, ord_compat(buffer[i]))
+            i += 1
+        else:
+            return False
+        while True:
+            j = ord_compat(buffer[i])
+            i += 1
+            if not j:
+                break
+            i += j
+    return frames > 1

@@ -36,6 +36,7 @@ def config(storage_path, ffmpeg_path):
     return Config(
         SECURITY_KEY='changeme',
         LOADER='thumbor.loaders.file_loader',
+        APP_CLASS='thumbor_video_engine.app.ThumborServiceApp',
         FILTERS=[],
         FILE_LOADER_ROOT_PATH=storage_path,
         FFMPEG_PATH=ffmpeg_path,

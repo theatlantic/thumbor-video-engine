@@ -37,3 +37,7 @@ def test_auto_webp_transcodes_anim_gif(http_client, base_url, accepts_webp,
     assert im.format == img_format.upper()
     assert im.is_animated is True
     assert im.size == (200, 150)
+
+    if ffmpeg_conf_gif_auto_webp:
+        vary_header = (response.headers.get('vary') or '').lower()
+        assert 'accept' in vary_header

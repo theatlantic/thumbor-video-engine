@@ -40,7 +40,46 @@ replace it with the filter from this package.
         'thumbor_video_engine.filters.format',
         'thumbor_video_engine.filters.still',
     ]
-    
+
+To enable automatic transcoding to animated gifs to webp, you can set
+``FFMPEG_GIF_AUTO_WEBP`` to ``True``. To use this feature you **cannot** set
+``USE_GIFSICLE_ENGINE`` to ``True``; this causes thumbor to bypass the
+custom ``ENGINE`` altogether. If you still want gifsicle to handle animated
+gifs you should set ``FFMPEG_USE_GIFSICLE_ENGINE`` to ``True`` and set
+``GIF_ENGINE`` to ``"thumbor_video_engine.engines.gif"``.
+
+You can also tell thumbor-video-engine to auto-transcode animated gifs to
+h264 or h265 when an HTTP request has ``video/*`` in its ``Accept`` header
+by enabling ``FFMPEG_GIF_AUTO_H264`` or ``FMPEG_GIF_AUTO_H265``, respectively.
+If it possible to use these settings along with ``FFMPEG_GIF_AUTO_WEBP``. If
+a request were to send an ``Accept`` header for both webp and video (e.g.
+``image/webp, video/*``) the engine would return an h264/h265 mp4. However,
+at the time this documentation is written there aren't any major browsers that
+accept both webp *and* videos for images.
+
+If your thumbor application is behind a CDN or caching proxy and you're using
+any of the automatic gif transcoding options, you will need to set
+``APP_CLASS`` to ``"thumbor_video_engine.app.ThumborServiceApp"`` to ensure
+that thumbor returns ``Vary: Accept`` when appropriate.
+
+If you want to use auto-mp4 gif conversion with result storage, you will need
+to set your ``RESULT_STORAGE`` to one that stores the auto-converted mp4
+videos separately from auto-webp or non-auto-converted gifs. This module
+provides a subclassed version of ``thumbor.result_storages.file_storage`` in
+``thumbor_video_engine.result_storages.file_storage``. For those using the s3
+result_storage class from tc_aws you can set ``RESULT_STORAGE`` to
+``thumbor_video_engine.result_storages.s3_storage`` to enable storage of gifs
+autoconverted to mp4.
+
+.. code-block:: python
+
+    ENGINE = 'thumbor_video_engine.engines.video'
+    GIF_ENGINE = 'thumbor_video_engine.engines.gif'
+    FFMPEG_USE_GIFSICLE_ENGINE = True
+    FFMPEG_GIF_AUTO_WEBP = True
+    FFMPEG_GIF_AUTO_H265 = True
+    APP_CLASS = 'thumbor_video_engine.app.ThumborServiceApp'
+    RESULT_STORAGE = 'thumbor_video_engine.result_storages.file_storage'
 
 Contents
 --------
