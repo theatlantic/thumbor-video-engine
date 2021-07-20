@@ -81,22 +81,35 @@ def test_s3_result_storage_save(mocker, config, http_client, base_url, auto_suff
     Bucket.put.assert_called_once()
     Bucket.put.mock_calls[0].args == (mocker.ANY, bucket_key, mocker.ANY)
     assert BaseEngine.get_mimetype(response.body) == mime_type
+    assert response.headers.get("vary") == "Accept"
 
 
 @pytest.mark.gen_test
 @pytest.mark.skipif(Bucket is None, reason="tc_aws unavailable")
-@pytest.mark.parametrize('auto_suffix,mime_type', [
-    ('', 'image/gif'),
-    ('/webp', 'image/webp'),
-    ('/mp4', 'video/mp4'),
+@pytest.mark.parametrize('auto_gif', (False, True))
+@pytest.mark.parametrize('bucket_key,mime_type,accepts', [
+    ('unsafe/hotdog.gif', 'image/gif', '*/*'),
+    ('unsafe/hotdog.png', 'image/png', '*/*'),
+    ('unsafe/hotdog.gif/webp', 'image/webp', 'image/webp'),
+    ('unsafe/hotdog.gif/mp4', 'video/mp4', 'video/*'),
 ])
-def test_s3_result_storage_load(mocker, config, http_client, base_url, auto_suffix,
-                                mime_type, s3_client, storage_path):
-    mocker.spy(VideoEngine, "load")
-    ext = auto_suffix.replace('/', '.') if auto_suffix else '.gif'
-    bucket_key = "unsafe/hotdog.gif%s" % auto_suffix
+def test_s3_result_storage_load(mocker, config, http_client, base_url, auto_gif,
+                                bucket_key, mime_type, accepts, s3_client, storage_path):
+    config.AUTO_WEBP = auto_gif
+    config.FFMPEG_GIF_AUTO_H264 = auto_gif
 
-    with open("%s/hotdog%s" % (storage_path, ext), mode='rb') as f:
+    if mime_type == 'image/gif':
+        config.FFMPEG_GIF_AUTO_H264 = False
+
+    mocker.spy(VideoEngine, "load")
+
+    if not auto_gif and mime_type != 'image/png':
+        bucket_key = 'unsafe/hotdog.gif'
+        mime_type = 'image/gif'
+
+    ext = mime_type.rpartition('/')[-1]
+
+    with open("%s/hotdog.%s" % (storage_path, ext), mode='rb') as f:
         im_bytes = f.read()
 
     s3_client.put_object(
@@ -105,12 +118,18 @@ def test_s3_result_storage_load(mocker, config, http_client, base_url, auto_suff
         Body=im_bytes,
         ContentType=mime_type)
 
-    response = yield http_client.fetch("%s/unsafe/hotdog.gif" % base_url,
+    req_ext = "png" if mime_type == "image/png" else "gif"
+    response = yield http_client.fetch("%s/unsafe/hotdog.%s" % (base_url, req_ext),
         headers={'Accept': mime_type})
 
     assert response.code == 200
     assert response.headers.get("content-type") == mime_type
     assert response.body == im_bytes
+    if auto_gif:
+        assert response.headers.get("vary") == "Accept"
+    else:
+        assert response.headers.get("vary") is None
+    assert VideoEngine.load.call_count == 0
 
 
 @pytest.mark.skipif(Bucket is None, reason="tc_aws unavailable")

@@ -1,6 +1,12 @@
 Changelog
 =========
 
+**1.2.1 (unreleased)**
+
+* Ensure that ``Vary: Accept`` header is returned for requests to animated
+  gifs that can be auto-converted to other formats when that image is
+  returned from result storage.
+
 **1.2.0 (Jul 19, 2021)**
 
 * Added an ``APP_CLASS`` ``"thumbor_video_engine.app.ThumborServiceApp"``

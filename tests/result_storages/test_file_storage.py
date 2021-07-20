@@ -30,15 +30,23 @@ def test_file_result_storage_save(config, http_client, base_url, tmp_path, subdi
 
 
 @pytest.mark.gen_test
-@pytest.mark.parametrize('subdir,accept,ext', [
-    ('default', '*/*', 'gif'),
-    ('auto_webp', 'image/webp', 'webp'),
-    ('auto_mp4', 'video/*', 'mp4'),
+@pytest.mark.parametrize('auto_gif', (False, True))
+@pytest.mark.parametrize('subdir,mime_type', [
+    ('default', 'image/gif'),
+    ('auto_webp', 'image/webp'),
+    ('auto_mp4', 'video/mp4'),
 ])
-def test_file_result_storage_retrieve(
-        config, mocker, http_client, base_url, tmp_path, storage_path, subdir, accept, ext):
+def test_file_result_storage_retrieve(config, mocker, http_client, base_url, tmp_path,
+                                      storage_path, subdir, mime_type, auto_gif):
     config.RESULT_STORAGE_FILE_STORAGE_ROOT_PATH = str(tmp_path)
+    config.AUTO_WEBP = auto_gif
+    config.FFMPEG_GIF_AUTO_H264 = auto_gif
 
+    if not auto_gif:
+        subdir = 'default'
+        mime_type = 'image/gif'
+
+    ext = mime_type.rpartition('/')[-1]
     src_file = "%s/hotdog.%s" % (storage_path, ext)
 
     os.makedirs("%s/%s/ba/68" % (tmp_path, subdir))
@@ -50,13 +58,18 @@ def test_file_result_storage_retrieve(
     mocker.spy(VideoEngine, "load")
 
     response = yield http_client.fetch("%s/unsafe/hotdog.gif" % base_url,
-        headers={'Accept': accept})
+        headers={'Accept': mime_type})
     assert response.code == 200
     assert VideoEngine.load.call_count == 0
+    assert response.headers.get('content-type') == mime_type
+    if auto_gif:
+        assert response.headers.get('vary') == 'Accept'
+    else:
+        assert response.headers.get('vary') is None
 
     response = yield http_client.fetch(
         "%s/unsafe/pbj-time.gif" % base_url,
-        headers={'Accept': accept})
+        headers={'Accept': mime_type})
     assert response.code == 200
     assert VideoEngine.load.call_count == 1
 
