@@ -1,7 +1,7 @@
 Changelog
 =========
 
-**1.2.1 (unreleased)**
+**1.2.1 (Jul 20, 2021)**
 
 * Ensure that ``Vary: Accept`` header is returned for requests to animated
   gifs that can be auto-converted to other formats when that image is
