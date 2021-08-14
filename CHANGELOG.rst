@@ -1,7 +1,7 @@
 Changelog
 =========
 
-**1.2.2 (unreleased)**
+**1.2.2 (Aug 14, 2021)**
 
 * Support source videos in quicktime/mov format. Fixes #9.
 
