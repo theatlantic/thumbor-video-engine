@@ -1,6 +1,10 @@
 Changelog
 =========
 
+**1.2.2 (unreleased)**
+
+* Support source videos in quicktime/mov format. Fixes #9.
+
 **1.2.1 (Jul 20, 2021)**
 
 * Ensure that ``Vary: Accept`` header is returned for requests to animated

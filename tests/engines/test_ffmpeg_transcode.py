@@ -14,7 +14,7 @@ def config(config):
 
 
 @pytest.mark.gen_test
-@pytest.mark.parametrize("src_ext", ['gif', 'mp4', 'h265.mp4', 'webp', 'webm'])
+@pytest.mark.parametrize("src_ext", ['gif', 'mp4', 'h265.mp4', 'webp', 'webm', 'mov'])
 def test_transcode_to_h264(http_client, base_url, src_ext):
     url_filter = "/filters:format(h264)" if src_ext else ""
     if src_ext is None:

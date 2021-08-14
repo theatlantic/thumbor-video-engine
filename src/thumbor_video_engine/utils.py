@@ -46,6 +46,10 @@ def is_mp4(buf):
     return bool(all_brands & {b'isom', b'avc1', b'iso2', b'mp41', b'mp42'})
 
 
+def is_qt(buf):
+    return buf[4:12] == b'ftypqt  '
+
+
 def has_transparency(im):
     if 'A' in im.mode or 'transparency' in im.info:
         # If the image has alpha channel, we check for any pixels that are not opaque (255)

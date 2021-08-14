@@ -1,7 +1,8 @@
 from thumbor.engines import BaseEngine
 from thumbor.utils import logger
 
-from thumbor_video_engine.utils import named_tmp_file, is_mp4, is_animated, is_animated_gif
+from thumbor_video_engine.utils import (
+    named_tmp_file, is_mp4, is_qt, is_animated, is_animated_gif)
 
 
 def patch_baseengine_get_mimetype():
@@ -14,6 +15,8 @@ def patch_baseengine_get_mimetype():
         mimetype = orig_get_mimetype(buffer)
         if mimetype is not None:
             return mimetype
+        elif is_qt(buffer):
+            return 'video/quicktime'
         elif is_mp4(buffer):
             return 'video/mp4'
 
@@ -108,6 +111,10 @@ class Engine(object):
                 extension = '.png'
                 if not self.context.request.format:
                     self.context.request.format = 'jpg'
+
+        # Change the default extension if we're transcoding video
+        if self.engine is self.ffmpeg_engine and extension == ".jpg":
+            extension = ".mp4"
 
         self.extension = extension
         self.engine.load(buffer, extension)
