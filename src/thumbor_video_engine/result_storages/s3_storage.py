@@ -1,18 +1,9 @@
 from os.path import join
 import tc_aws.result_storages.s3_storage
-from tornado.concurrent import return_future
 from .base import BaseStorage
 
 
 class Storage(BaseStorage, tc_aws.result_storages.s3_storage.Storage):
-    # @return_future
-    # def put(self, bytes, callback=None):
-    #     import ipdb; ipdb.set_trace()
-    #     super(Storage, self).put(bytes, callback=callback)
-
-    # @return_future
-    # def set(self, bytes, abspath, callback=None):
-    #     super(Storage, self).set(bytes, abspath, callback)
 
     def _normalize_path(self, path):
         """

@@ -8,6 +8,11 @@ try:
 except:
     Bucket = None
 
+try:
+    import asyncio
+except ImportError:
+    asyncio = None
+
 from thumbor.engines import BaseEngine
 from thumbor_video_engine.engines.video import Engine as VideoEngine
 
@@ -19,7 +24,7 @@ class SubprocessStderrPipe(subprocess.Popen):
         super(SubprocessStderrPipe, self).__init__(*args, **kwargs)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def s3_client(monkeypatch, mocker, config):
     import botocore.session
     from mirakuru import TCPExecutor
@@ -46,6 +51,11 @@ def s3_client(monkeypatch, mocker, config):
             yield botocore.session.get_session().create_client('s3', endpoint_url=endpoint_url)
 
     finally:
+        if asyncio is not None:
+            event_loop = asyncio.get_event_loop()
+            instances = getattr(Bucket, "_instances", None) or {}
+            for bucket in instances.values():
+                event_loop.run_until_complete(bucket._client.close())
         Bucket._instances = {}
 
 
