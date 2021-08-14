@@ -73,6 +73,7 @@ jobs:
       run: tox -e codecov
       env:
         CODECOV_NAME: ${{ github.workflow }}
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   report:
     if: always()
