@@ -89,9 +89,6 @@ class Engine(BaseEngine):
         """
         return self.context.config.FFMPEG_GIF_AUTO_WEBP and self.extension == '.gif'
 
-    def draw_rectangle(self, x, y, width, height):
-        raise NotImplementedError()
-
     def resize(self, width, height):
         width, height = int(width), int(height)
         self.resized = True
