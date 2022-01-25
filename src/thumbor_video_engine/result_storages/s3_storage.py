@@ -16,7 +16,7 @@ class Storage(BaseStorage, tc_aws.result_storages.s3_storage.Storage):
         path_segments = [path]
 
         root_path = self._get_config('ROOT_PATH')
-        if root_path and root_path is not '':
+        if root_path and root_path != '':
             path_segments.insert(0, root_path)
 
         transcode_segment = self.get_auto_path_component()

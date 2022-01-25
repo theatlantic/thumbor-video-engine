@@ -7,16 +7,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["2.7", "3.7"]
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        python-bin: ["python3"]
+        thumbor-version: ["7"]
         include:
           - python-version: "2.7"
-            python-bin: python2
+            python-version-desc: ""
+            python-bin: "python2"
+            thumbor-version: "6"
           - python-version: "3.7"
-            python-bin: python3
-        
+            python-version-desc: " (python 3.7)"
+          - python-version: "3.8"
+            python-version-desc: " (python 3.8)"
+          - python-version: "3.9"
+            python-version-desc: " (python 3.9)"
+          - python-version: "3.10"
+            python-version-desc: " (python 3.10)"
 
     runs-on: ubuntu-latest
-    name: Python ${{ matrix.python-version }}
+    name: Thumbor ${{ matrix.thumbor-version }}${{ matrix.python-version-desc }}
 
     env:
       FFMPEG_BUILD_VER: 20210119-553eb07737
