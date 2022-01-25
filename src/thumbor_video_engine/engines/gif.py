@@ -13,6 +13,7 @@ except ImportError:
 class Engine(BaseEngine):
 
     def resize(self, width, height):
+        width, height = int(width), int(height)
         super(Engine, self).resize(width, height)
         # Allow Gifsicle to add intermediate colors when resizing images.
         # Normally, Gifsicle's resize algorithms use input images' color
