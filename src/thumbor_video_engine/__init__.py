@@ -1,7 +1,7 @@
 from thumbor.config import Config
 
 
-__version__ = "1.2.2"
+__version__ = "1.2.3"
 
 
 Config.define(

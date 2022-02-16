@@ -1,6 +1,11 @@
 Changelog
 =========
 
+**1.2.3 (Feb 15, 2022)**
+
+* Fixed: issue with using the still filter in conjunction with the watermark
+  filter. Fixes #2.
+
 **1.2.2 (Aug 14, 2021)**
 
 * Support source videos in quicktime/mov format. Fixes #9.
