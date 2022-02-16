@@ -38,13 +38,8 @@ class Engine(object):
 
     @property
     def image_engine(self):
-        if not hasattr(self.context.modules, 'image_engine'):
-            # Instantiate the image engine class from the config (default is
-            # thumbor.engines.pil)
-            self.context.modules.importer.import_item('IMAGE_ENGINE', 'Engine')
-            self.context.modules.image_engine = (
-                self.context.modules.importer.image_engine(self.context))
-        return self.context.modules.image_engine
+        self.context.modules.importer.import_item('IMAGE_ENGINE', 'Engine')
+        return self.context.modules.importer.image_engine(self.context)
 
     @property
     def ffmpeg_engine(self):

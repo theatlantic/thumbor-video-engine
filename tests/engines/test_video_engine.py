@@ -144,15 +144,15 @@ def test_video_engine_getattr_attributeerror(context):
         video_engine.size
 
 
-@pytest.mark.parametrize('attr,cls', [
-    ('image_engine', PilEngine),
-    ('ffmpeg_engine', FFmpegEngine),
+@pytest.mark.parametrize('attr,cls,call_count', [
+    ('image_engine', PilEngine, 2),
+    ('ffmpeg_engine', FFmpegEngine, 1),
 ])
-def test_engine_properties(mocker, context, attr, cls):
+def test_engine_properties(mocker, context, attr, cls, call_count):
     mocker.spy(context.modules.importer, 'import_item')
     video_engine = VideoEngine(context)
     # Do twice to test value caching
     for i in range(0, 2):
         val = getattr(video_engine, attr)
         assert isinstance(val, cls)
-    assert context.modules.importer.import_item.call_count == 1
+    assert context.modules.importer.import_item.call_count == call_count
