@@ -13,9 +13,9 @@ class Filter(BaseFilter):
 
     @filter_method(BaseFilter.String)
     def format(self, format):
-        logger.warning('Setting format to %s' % format)
+        logger.debug('Setting format to %s' % format)
         if format.lower() not in ALLOWED_FORMATS:
-            logger.debug('Format not allowed: %s' % format.lower())
+            logger.warning('Format not allowed: %s' % format.lower())
             self.context.request.format = None
         else:
             logger.debug('Format specified: %s' % format.lower())
