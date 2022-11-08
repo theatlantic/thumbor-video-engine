@@ -95,7 +95,7 @@ jobs:
           name: junit-reports
 
       - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2.2
+        uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: ./*.xml
