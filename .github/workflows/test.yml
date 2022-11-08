@@ -32,10 +32,10 @@ jobs:
       GIFSICLE_VER: 1.92
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -70,7 +70,7 @@ jobs:
 
     - name: Upload junit xml
       if: always()
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: junit-reports
         path: reports/*.xml
@@ -90,16 +90,17 @@ jobs:
     runs-on: ubuntu-latest
     name: "Report Test Results"
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: junit-reports
 
       - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1.8
+        uses: EnricoMi/publish-unit-test-result-action@v2.2
         if: always()
         with:
           files: ./*.xml
           report_individual_runs: true
+          check_name: "Unit Test Results"
 
   success:
     needs: build
