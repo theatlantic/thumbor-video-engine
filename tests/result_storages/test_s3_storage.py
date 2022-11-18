@@ -51,11 +51,6 @@ def s3_client(monkeypatch, mocker, config):
             yield botocore.session.get_session().create_client('s3', endpoint_url=endpoint_url)
 
     finally:
-        if asyncio is not None:
-            event_loop = asyncio.get_event_loop()
-            instances = getattr(Bucket, "_instances", None) or {}
-            for bucket in instances.values():
-                event_loop.run_until_complete(bucket._client.close())
         Bucket._instances = {}
 
 
