@@ -288,3 +288,9 @@ Config.define(
     'the source image is an animated gif and the request accepts it (via '
     'Accept: video/* header)',
     'Video')
+
+Config.define(
+    'VIDEO_PROCESSING_WITHOUT_SOUND',
+    'False',
+    '(-an) processing of video without sound',
+    'Video')

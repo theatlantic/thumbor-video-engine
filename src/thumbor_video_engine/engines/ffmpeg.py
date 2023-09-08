@@ -41,6 +41,7 @@ class Engine(BaseEngine):
         super(Engine, self).__init__(context)
         self.ffmpeg_path = self.context.config.FFMPEG_PATH
         self.ffprobe_path = self.context.config.FFPROBE_PATH
+        self.video_processing_without_sound = self.context.config.VIDEO_PROCESSING_WITHOUT_SOUND
 
     @property
     def use_gif_engine(self):
@@ -242,8 +243,11 @@ class Engine(BaseEngine):
         vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
 
         flags = [
-            '-loop', '0', '-an', '-pix_fmt', pix_fmt, '-movflags', 'faststart',
+            '-loop', '0', '-pix_fmt', pix_fmt, '-movflags', 'faststart',
         ] + vf_flags + ['-f', 'webp']
+        print(self.video_processing_without_sound, 'JOPA')
+        if eval(self.video_processing_without_sound):
+            flags += ['-an']
 
         if is_lossless:
             flags += ['-lossless', '1']
@@ -320,9 +324,12 @@ class Engine(BaseEngine):
     def transcode_to_vp9(self, src_file):
         vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
         flags = [
-            '-c:v', 'libvpx-vp9', '-loop', '0', '-an', '-pix_fmt', 'yuv420p',
+            '-c:v', 'libvpx-vp9', '-loop', '0', '-pix_fmt', 'yuv420p',
             '-movflags', 'faststart',
         ] + vf_flags + ['-f', 'webm']
+
+        if eval(self.video_processing_without_sound):
+            flags += ['-an']
 
         if self.context.config.FFMPEG_VP9_VBR is not None:
             flags += ['-b:v', "%s" % self.context.config.FFMPEG_VP9_VBR]
@@ -355,8 +362,11 @@ class Engine(BaseEngine):
         vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
 
         flags = [
-            '-c:v', 'libx264', '-an', '-pix_fmt', 'yuv420p', '-movflags', 'faststart',
+            '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', 'faststart',
         ] + vf_flags + ['-f', 'mp4']
+
+        if eval(self.video_processing_without_sound):
+            flags += ['-an']
 
         if self.get_config('tune', 'h264'):
             flags += ['-tune', self.get_config('tune', 'h264')]
@@ -393,9 +403,12 @@ class Engine(BaseEngine):
         vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
 
         flags = [
-            '-c:v', 'hevc', '-tag:v', 'hvc1', '-an', '-pix_fmt', 'yuv420p',
+            '-c:v', 'hevc', '-tag:v', 'hvc1', '-pix_fmt', 'yuv420p',
             '-movflags', 'faststart',
         ] + vf_flags + ['-f', 'mp4']
+
+        if eval(self.video_processing_without_sound):
+            flags += ['-an']
 
         x265_params = []
 
