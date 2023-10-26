@@ -1,3 +1,4 @@
+import sys
 from setuptools import setup, find_packages
 from os import path
 
@@ -47,5 +48,5 @@ setup(
     ],
     packages=find_packages('src'),
     package_dir={'': 'src'},
-    install_requires=['thumbor'],
+    install_requires=['thumbor<7' if sys.version_info[0] == '2' else 'thumbor'],
     zip_safe=False)

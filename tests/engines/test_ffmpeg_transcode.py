@@ -203,12 +203,9 @@ def test_alpha_transcode_to_gif(http_client, base_url, src_ext):
     assert response.headers.get('content-type') == 'image/gif'
 
     im = Image.open(BytesIO(response.body))
-
     assert im.mode == 'P'
-    assert im.info['transparency'] == im.info['background']
-
     assert has_transparency(im)
-
+    assert im.convert("RGBA").getchannel("A").getpixel((50, 50)) == 0
     assert im.format == 'GIF'
     assert im.is_animated is True
     assert im.size == (200, 200)
