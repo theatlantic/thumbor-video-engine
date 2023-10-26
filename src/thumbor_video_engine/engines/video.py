@@ -1,5 +1,6 @@
 from thumbor.engines import BaseEngine
 from thumbor.utils import logger
+from thumbor.engines.pil import Engine as PILEngine
 
 from thumbor_video_engine.utils import (
     named_tmp_file, is_mp4, is_qt, is_animated, is_animated_gif)
@@ -26,7 +27,7 @@ def patch_baseengine_get_mimetype():
 patch_baseengine_get_mimetype()
 
 
-class Engine(object):
+class Engine(PILEngine):
     """An engine that dispatches video files to ffmpeg, and others to PIL"""
 
     def __init__(self, context):
@@ -119,7 +120,7 @@ class Engine(object):
 
     def cleanup(self):
         pass
-
+    
     def __getattr__(self, attr):
         if not self.__dict__.get('engine'):
             raise AttributeError("'Engine' object has no attribute '%s'" % attr)
