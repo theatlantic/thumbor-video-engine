@@ -160,7 +160,8 @@ class Engine(BaseEngine):
             # Load all frames, get the sum of all frames' durations
             for frame in ImageSequence.Iterator(self.image):
                 frame.load()
-                duration_ms += frame.info['duration']
+                if hasattr(frame.info, 'duration'):
+                    duration_ms += frame.info['duration']
             self.image.seek(0)
             self.duration = Decimal(duration_ms) / Decimal(1000)
         else:
