@@ -1,6 +1,10 @@
 Changelog
 =========
 
+**1.2.4 (Jan 4, 2024)**
+
+* Feature: support thumbor-aws result storage
+
 **1.2.3 (Feb 15, 2022)**
 
 * Fixed: issue with using the still filter in conjunction with the watermark
