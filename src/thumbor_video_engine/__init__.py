@@ -288,3 +288,11 @@ Config.define(
     'the source image is an animated gif and the request accepts it (via '
     'Accept: video/* header)',
     'Video')
+
+
+Config.define(
+    'FFMPEG_PRESERVE_AUDIO',
+    False,
+    'If True, thumbor-video-engine will not strip the audio track. Defaults to '
+    'False',
+    'Video')

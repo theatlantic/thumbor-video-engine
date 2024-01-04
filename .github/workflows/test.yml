@@ -35,6 +35,7 @@ jobs:
     env:
       FFMPEG_BUILD_VER: 20210119-553eb07737
       GIFSICLE_VER: 1.92
+      PYTEST_ADDOPTS: ${{ matrix.python-version == '2.7' && '--ignore=tests/result_storages/test_thumbor_aws_storage.py' || '' }}
 
     container:
       image: ${{ matrix.python-version == '2.7' && 'python:2.7-buster' || null }}
@@ -91,10 +92,12 @@ jobs:
         path: reports/*.xml
 
     - name: Combine coverage
+      if: matrix.python-version != '2.7'
       run: tox -e coverage-report
 
     - name: Upload coverage
       uses: codecov/codecov-action@v3
+      if: matrix.python-version != '2.7'
       with:
         file: ./coverage.xml
         name: ${{ github.workflow }}
