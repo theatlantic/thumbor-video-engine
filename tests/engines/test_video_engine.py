@@ -15,7 +15,7 @@ from tests.utils import color_diff, repr_rgb
 
 def assert_colors_similar(rgb1, rgb2, message):
     delta_e = color_diff(rgb1, rgb2)
-    assert delta_e < 0.05, f"{message}: {repr_rgb(rgb1)} != {repr_rgb(rgb2)}"
+    assert delta_e < 0.05, "%s: %s != %s" % (message, repr_rgb(rgb1), repr_rgb(rgb2))
 
 
 @pytest.fixture

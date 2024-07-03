@@ -14,7 +14,7 @@ except ImportError:
     asyncio = None
 
 from thumbor.engines import BaseEngine
-from thumbor_video_engine.engines.video import Engine as VideoEngine
+from thumbor_video_engine.engines.ffmpeg import Engine as FFMpegEngine
 
 
 # Subclassed Popen that gets around mirakuru not capturing stderr
@@ -106,7 +106,7 @@ def test_s3_result_storage_load(mocker, config, http_client, base_url, auto_gif,
     if mime_type == 'image/gif':
         config.FFMPEG_GIF_AUTO_H264 = False
 
-    mocker.spy(VideoEngine, "load")
+    mocker.spy(FFMpegEngine, "load")
 
     if not auto_gif and mime_type != 'image/png':
         bucket_key = 'unsafe/hotdog.gif'
@@ -134,7 +134,7 @@ def test_s3_result_storage_load(mocker, config, http_client, base_url, auto_gif,
         assert response.headers.get("vary") == "Accept"
     else:
         assert response.headers.get("vary") is None
-    assert VideoEngine.load.call_count == 0
+    assert FFMpegEngine.load.call_count == 0
 
 
 @pytest.mark.skipif(Bucket is None, reason="tc_aws unavailable")

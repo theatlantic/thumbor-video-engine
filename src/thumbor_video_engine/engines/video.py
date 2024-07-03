@@ -125,7 +125,7 @@ class Engine(object):
         # or video_engine class, when appropriate, for self.__class__
         if attr == "__class__" and self.__dict__.get("engine"):
             return self.__dict__["engine"].__class__
-        return super().__getattribute__(attr)
+        return object.__getattribute__(self, attr)
 
     def __getattr__(self, attr):
         if not self.__dict__.get('engine'):
