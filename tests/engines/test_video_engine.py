@@ -10,10 +10,17 @@ from PIL import Image
 from thumbor_video_engine.engines.ffmpeg import Engine as FFmpegEngine
 from thumbor_video_engine.engines.video import Engine as VideoEngine
 
+from tests.utils import color_diff, repr_rgb
+
+
+def assert_colors_similar(rgb1, rgb2, message):
+    delta_e = color_diff(rgb1, rgb2)
+    assert delta_e < 0.05, f"{message}: {repr_rgb(rgb1)} != {repr_rgb(rgb2)}"
+
 
 @pytest.fixture
 def config(config):
-    config.FILTERS = ['thumbor_video_engine.filters.format']
+    config.FILTERS = ['thumbor_video_engine.filters.format', 'thumbor.filters.fill']
     return config
 
 
@@ -37,6 +44,21 @@ def test_dispatch_to_image_engine(mocker, http_client, base_url):
     assert response.code == 200
     assert PilEngine.load.call_count == 1
     assert BaseEngine.get_mimetype(response.body) == 'image/jpeg'
+
+
+@pytest.mark.gen_test
+def test_fill_filter(http_client, base_url):
+    response = yield http_client.fetch(
+        "%s/unsafe/filters:format(jpg):fill(ffff00,1)/hotdog-transparent.png" % base_url
+    )
+
+    assert response.code == 200
+    assert BaseEngine.get_mimetype(response.body) == "image/jpeg"
+
+    im = Image.open(BytesIO(response.body))
+
+    top_left_color = im.getpixel((0, 0))[:3]
+    assert_colors_similar(top_left_color, (255, 255, 0), "Fill not applied")
 
 
 @pytest.mark.gen_test
