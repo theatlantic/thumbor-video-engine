@@ -120,6 +120,13 @@ class Engine(object):
     def cleanup(self):
         pass
 
+    def __getattribute__(self, attr):
+        # For compatibility with some thumbor filters, return the image_engine
+        # or video_engine class, when appropriate, for self.__class__
+        if attr == "__class__" and self.__dict__.get("engine"):
+            return self.__dict__["engine"].__class__
+        return object.__getattribute__(self, attr)
+
     def __getattr__(self, attr):
         if not self.__dict__.get('engine'):
             raise AttributeError("'Engine' object has no attribute '%s'" % attr)
