@@ -7,7 +7,7 @@ from tests.moto_server import MotoService
 
 
 @pytest_asyncio.fixture
-async def s3_server(monkeypatch, event_loop):
+async def s3_server(monkeypatch):
     monkeypatch.setenv("TEST_SERVER_MODE", "true")
     monkeypatch.setenv("AWS_SHARED_CREDENTIALS_FILE", "")
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test-key")
@@ -18,7 +18,7 @@ async def s3_server(monkeypatch, event_loop):
 
 
 @pytest.fixture
-def session(event_loop):
+def session():
     return aiobotocore.session.AioSession()
 
 

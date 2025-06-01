@@ -1,6 +1,10 @@
 Changelog
 =========
 
+**Unreleased**
+
+* Drop support for python 2.7 and thumbor 6
+
 **1.2.5 (Jul 8, 2024)**
 
 * Fixed: Compatibility with the thumbor "fill" filter. Fixes `#12`_.
