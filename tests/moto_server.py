@@ -91,7 +91,7 @@ class MotoService:
 
     def _server_entry(self):
         self._main_app = moto.server.DomainDispatcherApplication(
-            moto.server.create_backend_app, service=self._service_name
+            moto.server.create_backend_app
         )
         self._main_app.debug = True
 
@@ -124,7 +124,7 @@ class MotoService:
                     async with session.get(
                         self.endpoint_url + "/static",
                         timeout=_CONNECT_TIMEOUT,
-                        verify_ssl=False,
+                        ssl=False,
                     ):
                         pass
                     break

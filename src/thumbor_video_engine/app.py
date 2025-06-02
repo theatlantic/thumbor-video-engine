@@ -1,7 +1,4 @@
 import re
-import sys
-
-import tornado.gen as gen
 
 import thumbor.app
 from thumbor.handlers.imaging import ImagingHandler
@@ -54,37 +51,22 @@ class VideoEngineImagingHandler(ImagingHandler):
         if should_vary and getattr(self.context.request, "should_vary", False):
             self.set_header('Vary', 'Accept')
 
-    if sys.version_info[0] == 2:
-        def _write_results_to_client(self, results, content_type):
-            self._override_write_results_to_client(results, content_type)
-            super(VideoEngineImagingHandler, self)._write_results_to_client(results, content_type)
-    else:
-        exec("\n".join([
-            "async def _write_results_to_client(self, results, content_type):",
-            "    self._override_write_results_to_client(results, content_type)",
-            "    await ImagingHandler._write_results_to_client(self, results, content_type)",
-        ]))
+    async def _write_results_to_client(self, results, content_type):
+        self._override_write_results_to_client(results, content_type)
+        await super()._write_results_to_client(results, content_type)
 
     def _override_execute_image_operations(self):
         self.context.request.accepts_video = (
             'video/' in self.request.headers.get('Accept', ''))
 
-    if sys.version_info[0] == 2:
-        @gen.coroutine
-        def execute_image_operations(self):
-            self._override_execute_image_operations()
-            yield super(VideoEngineImagingHandler, self).execute_image_operations()
-    else:
-        exec("\n".join([
-            "async def execute_image_operations(self):",
-            "    self._override_execute_image_operations()",
-            "    await ImagingHandler.execute_image_operations(self)",
-        ]))
+    async def execute_image_operations(self):
+        self._override_execute_image_operations()
+        await super().execute_image_operations()
 
 
 class ThumborServiceApp(thumbor.app.ThumborServiceApp):
     def get_handlers(self):
-        handlers = super(ThumborServiceApp, self).get_handlers()
+        handlers = super().get_handlers()
         for i, handler in list(enumerate(handlers)):
             url_regex, handler_cls, ctx = handler[0], handler[1], handler[2:]
             if issubclass(handler_cls, ImagingHandler):

@@ -1,6 +1,19 @@
 Changelog
 =========
 
+**Unreleased**
+
+* Drop support for python 2.7 and thumbor 6
+
+**1.2.5 (Jul 8, 2024)**
+
+* Fixed: Compatibility with the thumbor "fill" filter. Fixes `#12`_.
+* Fixed: Allow the same base formats as thumbor in the format filter. Fixes
+  `#23`_.
+
+.. _#12: https://github.com/theatlantic/thumbor-video-engine/issues/12
+.. _#23: https://github.com/theatlantic/thumbor-video-engine/issues/23
+
 **1.2.4 (Jan 4, 2024)**
 
 * Feature: support thumbor-aws result storage
