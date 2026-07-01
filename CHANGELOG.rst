@@ -3,6 +3,35 @@ Changelog
 
 **Unreleased**
 
+* Fixed: animated-gif transcodes no longer exhaust memory on large inputs.
+  ``probe()`` now reads gif size and duration from a single-pass header parser
+  (``thumbor_video_engine.utils.parse_gif``) instead of decoding every frame
+  with Pillow, and ``transcode_to_gif()`` applies all geometry in ffmpeg at the
+  target size with on-disk intermediates. When ``FFMPEG_USE_GIFSICLE_ENGINE`` is
+  enabled, gifsicle now runs as a geometry-free ``-O3`` optimization pass
+  file-to-file rather than loading the full-resolution animation into thumbor's
+  gif engine. Python heap usage is now bounded regardless of source resolution
+  or frame count.
+* **Behavior change:** for animated gifs, the ffmpeg engine's gifsicle
+  optimization pass now invokes ``gifsicle`` directly (still honoring
+  ``GIFSICLE_PATH`` and ``GIFSICLE_ARGS``) on the already-resized output,
+  instead of routing through ``GIF_ENGINE``. ``GIF_ENGINE`` is still used for
+  non-animated gifs. If you set ``GIF_ENGINE`` to a subclass of
+  ``thumbor_video_engine.engines.gif.Engine`` in order to customize *animated*
+  gif handling, those overrides no longer take effect there; move them into a
+  subclass of the ffmpeg engine (``FFMPEG_ENGINE``) that overrides
+  ``_gif_legacy`` or ``_gifsicle_optimize_file``.
+* Feature: optional streaming ``gifski`` pipeline, enabled with
+  ``FFMPEG_GIF_PIPELINE = 'gifski'`` (plus ``GIFSKI_PATH``, ``GIFSKI_QUALITY``,
+  ``GIFSKI_MAX_TARGET_PIXELS``, ``GIFSKI_GIFSICLE_PASS``). Streams frames from
+  ffmpeg into gifski at the target size for faster, higher-quality gifs, falling
+  back to the legacy pipeline for variable-delay gifs, oversized targets, or when
+  the gifski binary is absent. gifski is AGPL-3.0 and is never a hard dependency;
+  it is invoked as an unmodified subprocess only when configured.
+* Feature: ``MAX_ANIMATED_GIF_PIXELS`` rejects an animated-GIF source whose
+  ``width * height * frame_count`` exceeds the limit with a ``400`` response,
+  but only when the output is also gif (conversions to video/webp/avif are
+  memory-bounded and unaffected). Disabled by default.
 * Drop support for python 2.7 and thumbor 6
 
 **1.2.5 (Jul 8, 2024)**

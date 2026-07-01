@@ -43,23 +43,36 @@ The engine to use for video files. It defaults to
 GIFSICLE\_PATH
 ~~~~~~~~~~~~~~
 
-The path to the gifsicle binary. It defaults to ``None``, in which case it
-looks for gifsicle in ``PATH``. This is only used if ``GIF_ENGINE`` is set to
-``'thumbor_video_engines.engines.gif'``. As of version 6.7.0, thumbor does not
-support configuring this value.
+The path to the gifsicle binary. It defaults to ``None``, in which case gifsicle
+is looked up on ``PATH``. It is honored both by the FFmpeg engine's animated-gif
+optimization pass (when ``FFMPEG_USE_GIFSICLE_ENGINE`` is enabled) and by the gif
+engine for non-animated gifs (when ``GIF_ENGINE`` is set to
+``'thumbor_video_engine.engines.gif'``).
 
 GIFSICLE\_ARGS
 ~~~~~~~~~~~~~~
 
-A list of additional args to pass to gifsicle. This is only used if
-``GIF_ENGINE`` is set to ``'thumbor_video_engines.engines.gif'``.
+A list of additional args to pass to gifsicle (e.g. ``['--lossy=80']``). Honored
+by the FFmpeg engine's animated-gif optimization pass (when
+``FFMPEG_USE_GIFSICLE_ENGINE`` is enabled), by the gifski pipeline's optional
+``GIFSKI_GIFSICLE_PASS``, and by the gif engine for non-animated gifs (when
+``GIF_ENGINE`` is ``'thumbor_video_engine.engines.gif'``).
 
 FFMPEG\_USE\_GIFSICLE\_ENGINE
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Equivalent to USE\_GIFSICLE\_ENGINE, but for the FFmpeg engine. It defaults to
-``False``. If ``True``, it will perform any image operations on animated gifs
-(e.g. cropping and resizing) using gifsicle (by way of ``GIF_ENGINE``).
+``False``. If ``True``, gifsicle runs as a final ``-O3`` optimization pass
+(plus ``GIFSICLE_ARGS``) over the gif produced by ffmpeg, reducing file size.
+All geometry (cropping, resizing) is applied by ffmpeg at the target size, so
+the gifsicle pass performs no resizing of its own and runs file-to-file on
+disk — the full animation is never buffered in the Python heap.
+
+This pass invokes ``gifsicle`` directly rather than routing through
+``GIF_ENGINE``, so a custom ``GIF_ENGINE`` does not participate in animated-gif
+transcodes (it is still used for non-animated gifs). To customize the
+animated-gif optimization step, subclass the FFmpeg engine (``FFMPEG_ENGINE``)
+and override ``_gif_legacy`` or ``_gifsicle_optimize_file``.
 
 FFMPEG\_HANDLE\_ANIMATED\_GIF
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -87,6 +100,86 @@ FFMPEG\_GIF\_AUTO\_H265
 Specifies whether H265 format should be used automatically if the
 source image is an animated gif and the request accepts it (via
 ``Accept: video/*``). It defaults to ``False``.
+
+FFMPEG\_GIF\_PIPELINE
+~~~~~~~~~~~~~~~~~~~~~
+
+Selects the gif-to-gif transcode pipeline. It defaults to ``'legacy'``.
+
+``'legacy'``
+    The ``palettegen``/``paletteuse`` pipeline. ffmpeg applies all geometry
+    (crop, resize) at the **target** size, writes intermediates to disk, and
+    — when ``FFMPEG_USE_GIFSICLE_ENGINE`` is enabled — runs a final
+    geometry-free ``gifsicle -O3`` optimization pass. Only the final output
+    bytes ever enter the Python heap, so memory stays bounded regardless of
+    the source animation's resolution or frame count.
+
+``'gifski'``
+    Streams frames from ffmpeg directly into the `gifski`__ encoder at the
+    target size, producing noticeably higher-quality gifs much faster. Inputs
+    that gifski cannot represent are routed back to the ``legacy`` path
+    automatically:
+
+    - **variable per-frame delays** (gifski emits a constant frame rate),
+    - **target sizes above** ``GIFSKI_MAX_TARGET_PIXELS``,
+    - and any request when the ``gifski`` binary is not available.
+
+    Visibly-transparent gifs are decoded to PNG frames first (gifski
+    preserves alpha from PNG input); opaque gifs and video sources stream
+    through a ``yuv4mpegpipe``.
+
+    .. note::
+        gifski is licensed under the `AGPL-3.0`__. thumbor-video-engine
+        invokes it as an unmodified subprocess (aggregation, not linking) and
+        never declares it as a dependency. You must install the ``gifski``
+        binary yourself to use this pipeline, and your deployment is
+        responsible for AGPL compliance.
+
+.. __: https://gif.ski/
+.. __: https://www.gnu.org/licenses/agpl-3.0.html
+
+GIFSKI\_PATH
+~~~~~~~~~~~~
+
+Path to the gifski binary. It defaults to ``None``, in which case gifski is
+looked up on ``PATH``. Only used when ``FFMPEG_GIF_PIPELINE`` is ``'gifski'``.
+
+GIFSKI\_QUALITY
+~~~~~~~~~~~~~~~
+
+Quality (1–100) passed to gifski (``--quality``). Defaults to ``90``.
+
+GIFSKI\_MAX\_TARGET\_PIXELS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Above this output size (target ``width * height``), the gifski pipeline routes
+through the legacy path instead. gifski's quantizer working set grows with
+output dimensions, while the legacy path's memory stays bounded — this trades
+a bit of wall time for bounded subprocess memory on large outputs. Defaults to
+``1440000`` (1600×900). A value of ``0`` disables the switch.
+
+GIFSKI\_GIFSICLE\_PASS
+~~~~~~~~~~~~~~~~~~~~~~
+
+If ``True``, run a final geometry-free ``gifsicle -O3`` pass (plus
+``GIFSICLE_ARGS``, e.g. ``--lossy``) over gifski's output to further reduce
+file size. Defaults to ``False``.
+
+MAX\_ANIMATED\_GIF\_PIXELS
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Maximum total pixels (``width * height * frame_count``) for an animated **gif
+source that is being transcoded to gif**. Sources over this limit fail with a
+``400`` response. thumbor's ``MAX_PIXELS`` is per-frame and does not bound frame
+count, so a high-frame-count gif can still be expensive; this gate, evaluated
+cheaply at load time from a single-pass header parse (no frame decoding), bounds
+the total.
+
+Only the gif→gif path is gated. Converting a GIF source to video/webp/avif
+(including the automatic conversions from ``FFMPEG_GIF_AUTO_H264`` /
+``FFMPEG_GIF_AUTO_H265`` / ``FFMPEG_GIF_AUTO_WEBP``) streams through ffmpeg with
+bounded memory and is the efficient way to serve a large animated gif, so those
+are not affected. Defaults to ``0``, which disables the check.
 
 FFPROBE\_PATH
 ~~~~~~~~~~~~~

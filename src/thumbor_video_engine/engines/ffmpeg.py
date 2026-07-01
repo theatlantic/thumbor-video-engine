@@ -3,9 +3,14 @@ from __future__ import unicode_literals
 from contextlib import contextmanager
 import copy
 from decimal import Decimal
+from fractions import Fraction
+from glob import glob
 from io import BytesIO, open
+import os
 import re
-from subprocess import Popen, PIPE
+from shutil import which
+from subprocess import Popen, PIPE, DEVNULL
+import threading
 
 from PIL import Image, ImageSequence
 from thumbor.engines import BaseEngine
@@ -13,7 +18,14 @@ from thumbor.utils import logger
 
 from thumbor_video_engine.exceptions import FFmpegError
 from thumbor_video_engine.ffprobe import ffprobe
-from thumbor_video_engine.utils import named_tmp_file, make_tmp_dir, has_transparency
+from thumbor_video_engine.utils import (
+    named_tmp_file, make_tmp_dir, has_transparency, parse_gif, GifParseError)
+
+
+# Cap for constant-frame-rate conversion of video sources to gif; gif delays
+# are whole centiseconds, so anything above 50fps quantizes badly anyway
+MAX_VIDEO_GIF_FPS = Fraction(50)
+DEFAULT_VIDEO_GIF_FPS = Fraction(20)
 
 
 FORMATS = {
@@ -38,6 +50,8 @@ class Engine(BaseEngine):
         self.resized = False
         self.cropped = False
         self.grayscale = False
+        self.gif_info = None
+        self.source_frame_rate = None
         super(Engine, self).__init__(context)
         self.ffmpeg_path = self.context.config.FFMPEG_PATH
         self.ffprobe_path = self.context.config.FFPROBE_PATH
@@ -138,11 +152,38 @@ class Engine(BaseEngine):
         self.extension = extension
         self.buffer = buffer
         self.operations = []
-        if self.get_mimetype(buffer).startswith('image/'):
+        self.gif_info = None
+        self.source_frame_rate = None
+        mimetype = self.get_mimetype(buffer)
+        if mimetype and mimetype.startswith('image/'):
             self.image = Image.open(BytesIO(buffer))
         else:
             # self.image cannot be None, or the thumbor handler returns a 400
             self.image = ''
+        if bytes(buffer[:6]) in (b'GIF87a', b'GIF89a'):
+            try:
+                self.gif_info = parse_gif(buffer)
+            except GifParseError:
+                self.gif_info = None
+
+        # Only the gif->gif path is gated; converting a GIF source to
+        # video/webp/avif streams through ffmpeg with bounded memory (and is
+        # the efficient way to serve a large animated gif), so it is allowed.
+        max_pixels = self.context.config.MAX_ANIMATED_GIF_PIXELS
+        requested_format = getattr(self.context.request, 'format', None)
+        out_format = requested_format or FORMATS.get(self.extension)
+        if (self.gif_info and max_pixels and out_format == 'gif'
+                and self.gif_info.total_pixels > max_pixels):
+            logger.warning(
+                "Animated gif too large for gif output: %dx%d x %d frames "
+                "(%d pixels > MAX_ANIMATED_GIF_PIXELS=%d) for url `%s`",
+                self.gif_info.width, self.gif_info.height,
+                self.gif_info.frame_count, self.gif_info.total_pixels,
+                max_pixels, getattr(self.context.request, 'url', None))
+            # engine.image == None makes the thumbor handler respond with a 400
+            self.image = None
+            return
+
         self.probe()
 
     def has_transparency(self):
@@ -152,9 +193,14 @@ class Engine(BaseEngine):
             return False
 
     def probe(self):
-        # If self.image, we have an animated image (e.g. webp) that ffmpeg
-        # cannot yet decode, but pillow can.
-        if self.image:
+        if self.gif_info is not None:
+            # Size and duration come from the single-pass block parser; no
+            # need to decode every frame canvas with PIL just to sum durations
+            self.original_size = self.gif_info.width, self.gif_info.height
+            self.duration = self.gif_info.duration
+        elif self.image:
+            # An animated image (e.g. webp) that ffmpeg cannot yet decode,
+            # but pillow can.
             self.original_size = self.image.size
             duration_ms = 0
             # Load all frames, get the sum of all frames' durations
@@ -167,6 +213,9 @@ class Engine(BaseEngine):
             ffprobe_data = ffprobe(self.buffer, extension=self.extension)
             self.original_size = ffprobe_data['width'], ffprobe_data['height']
             self.duration = Decimal(ffprobe_data['duration'])
+            self.source_frame_rate = (
+                ffprobe_data.get('avg_frame_rate')
+                or ffprobe_data.get('r_frame_rate'))
 
     def read(self, extension=None, quality=None):
         if quality is None:
@@ -259,44 +308,255 @@ class Engine(BaseEngine):
         return self.run_ffmpeg(src_file, 'webp', flags=flags, two_pass=False)
 
     def transcode_to_gif(self, src_file):
-        with named_tmp_file(suffix='.png') as palette_file:
-            if not self.use_gif_engine and self.ffmpeg_vfilters:
-                libav_filter = ','.join(self.ffmpeg_vfilters)
-            else:
-                libav_filter = 'scale=%d:%d:flags=lanczos' % self.original_size
+        if (self.context.config.FFMPEG_GIF_PIPELINE == 'gifski'
+                and self._gifski_path() is not None):
+            return self._transcode_to_gif_gifski(src_file)
+        return self._gif_legacy(src_file)
 
-            input_flags = ['-f', 'concat', '-safe', '0'] if src_file.endswith('.txt') else []
+    def _gifski_path(self):
+        configured = self.context.config.GIFSKI_PATH
+        return which(configured) if configured else which('gifski')
 
-            self.run_cmd([
-                self.ffmpeg_path, '-hide_banner',
-            ] + input_flags + [
-                '-i', src_file,
-                '-lavfi', "%s,palettegen" % libav_filter,
-                '-y', palette_file,
-            ])
+    def _input_flags(self, src_file):
+        # text files in concat-format require additional input flags
+        return ['-f', 'concat', '-safe', '0'] if src_file.endswith('.txt') else []
 
-            gif_buffer = self.run_cmd([
-                self.ffmpeg_path, '-hide_banner',
-            ] + input_flags + [
-                '-i', src_file,
-                '-i', palette_file,
-                '-lavfi', "%s[x];[x][1:v]paletteuse" % libav_filter,
-                '-f', 'gif',
-                '-',
-            ])
+    def _transcode_to_gif_gifski(self, src_file):
+        # gifski's quantizer working set grows with output dimensions
+        # (~450MB at 1600x900 for a 125-frame animation, vs ~200MB for the
+        # legacy pipeline); above the threshold, trade wall time for bounded
+        # subprocess memory.
+        width, height = self.image_size
+        max_target = self.context.config.GIFSKI_MAX_TARGET_PIXELS
+        if max_target and width * height > max_target:
+            return self._gif_legacy(src_file)
 
-            if not self.use_gif_engine:
-                return gif_buffer
-            else:
-                gif_engine = self.context.modules.gif_engine
-                gif_engine.load(gif_buffer, '.gif')
-                gif_engine.operations.append('-O3')
+        info = self.gif_info
+        if info is None:
+            if self.image:
+                # Animated webp input (or an unparseable gif that PIL could
+                # still open): per-frame timing is unknown to us, so use the
+                # timing-exact legacy path.
+                return self._gif_legacy(src_file)
+            # Video source: constant frame rate from ffprobe
+            return self._gifski_y4m(src_file, self._video_fps(), "0")
 
-                for op_fn, op_args in self.operations:
-                    gif_engine_method = getattr(gif_engine, op_fn)
-                    gif_engine_method(*op_args)
+        if not info.is_uniform_delay:
+            # Variable frame delays can't be represented in a constant frame
+            # rate y4m stream; the legacy path preserves them exactly.
+            return self._gif_legacy(src_file)
 
-            return gif_engine.read()
+        repeat = "-1" if info.loop_count is None else str(info.loop_count)
+        if self._gif_visibly_transparent(info):
+            return self._gifski_png_frames(src_file, info.uniform_fps, repeat)
+        return self._gifski_y4m(src_file, info.uniform_fps, repeat)
+
+    def _gif_visibly_transparent(self, info):
+        """GCE transparency flags over-approximate: optimized opaque GIFs
+        routinely set them for inter-frame patching. Check whether frame 0
+        actually has non-opaque pixels (cheap: one frame), and whether any
+        frame can expose the background via disposal. False positives just
+        take the PNG route, which is also correct for opaque GIFs."""
+        if not info.has_transparency_flags:
+            return False
+        try:
+            if self.has_transparency():
+                return True
+        except Exception:
+            return True
+        return info.has_transparent_disposal
+
+    def _video_fps(self):
+        try:
+            fps = Fraction(self.source_frame_rate)
+        except (TypeError, ValueError, ZeroDivisionError):
+            fps = DEFAULT_VIDEO_GIF_FPS
+        if fps <= 0:
+            fps = DEFAULT_VIDEO_GIF_FPS
+        return min(fps, MAX_VIDEO_GIF_FPS)
+
+    def _gifski_cmd(self, out_file, fps):
+        config = self.context.config
+        width, height = self.image_size
+        return [
+            self._gifski_path(),
+            "--quiet",
+            "--quality", "%s" % config.GIFSKI_QUALITY,
+            "--fps", "%g" % float(fps),
+            # gifski caps output at ~800x600 unless explicitly sized; frames
+            # are already scaled to exactly this size by ffmpeg
+            "--width", "%d" % width,
+            "--height", "%d" % height,
+            "-o", out_file,
+        ]
+
+    def _gifski_y4m(self, src_file, fps, repeat):
+        vf = self.ffmpeg_vfilters + ["fps=%s" % fps]
+        ffmpeg_cmd = (
+            [self.ffmpeg_path, "-hide_banner", "-loglevel", "error"]
+            + self._input_flags(src_file)
+            + [
+                "-i", src_file,
+                "-an",
+                "-vf", ",".join(vf),
+                "-pix_fmt", "yuv444p",
+                "-f", "yuv4mpegpipe",
+                "-",
+            ]
+        )
+        with named_tmp_file(suffix=".gif") as out_file:
+            gifski_cmd = self._gifski_cmd(out_file, fps) + ["--repeat", repeat, "-"]
+            self._run_pipeline(ffmpeg_cmd, gifski_cmd)
+            if self.context.config.GIFSKI_GIFSICLE_PASS:
+                return self._gifsicle_optimize_file(out_file)
+            with open(out_file, mode="rb") as f:
+                return f.read()
+
+    def _gifski_png_frames(self, src_file, fps, repeat):
+        vf = self.ffmpeg_vfilters + ["fps=%s" % fps]
+        with make_tmp_dir() as tmp_dir:
+            self.run_cmd(
+                [self.ffmpeg_path, "-hide_banner", "-loglevel", "error"]
+                + self._input_flags(src_file)
+                + [
+                    "-i", src_file,
+                    "-an",
+                    "-vf", ",".join(vf),
+                    # gifski preserves alpha from PNG input. -compression_level 0
+                    # makes the (lossless) dump much faster at the cost of
+                    # scratch disk.
+                    "-compression_level", "0",
+                    os.path.join(tmp_dir, "%05d.png"),
+                ]
+            )
+            frame_files = sorted(glob(os.path.join(tmp_dir, "*.png")))
+            if not frame_files:
+                raise FFmpegError(
+                    "ffmpeg produced no frames for url `%s`"
+                    % getattr(self.context.request, "url", None))
+            with named_tmp_file(suffix=".gif") as out_file:
+                gifski_cmd = (
+                    self._gifski_cmd(out_file, fps)
+                    + ["--repeat", repeat]
+                    + frame_files
+                )
+                self.run_cmd(gifski_cmd)
+                if self.context.config.GIFSKI_GIFSICLE_PASS:
+                    return self._gifsicle_optimize_file(out_file)
+                with open(out_file, mode="rb") as f:
+                    return f.read()
+
+    def _run_pipeline(self, src_cmd, sink_cmd):
+        """Run ``src_cmd | sink_cmd``, streaming src's stdout into sink's
+        stdin. Raises :class:`FFmpegError` if either process exits non-zero."""
+        logger.debug("Running `%s | %s`", " ".join(src_cmd), " ".join(sink_cmd))
+        src_proc = Popen(src_cmd, stdout=PIPE, stderr=PIPE, stdin=DEVNULL)
+        try:
+            sink_proc = Popen(
+                sink_cmd, stdin=src_proc.stdout, stdout=DEVNULL, stderr=PIPE)
+        except Exception:
+            src_proc.kill()
+            src_proc.stdout.close()
+            src_proc.stderr.close()
+            src_proc.wait()
+            raise
+        # Drop our duplicate of the write end so that, if the sink dies, the
+        # source gets SIGPIPE instead of blocking forever
+        src_proc.stdout.close()
+
+        src_stderr = []
+
+        def drain():
+            src_stderr.append(src_proc.stderr.read())
+            src_proc.stderr.close()
+
+        drain_thread = threading.Thread(target=drain)
+        drain_thread.start()
+        try:
+            _, sink_stderr = sink_proc.communicate()
+        finally:
+            src_proc.wait()
+            drain_thread.join()
+
+        if src_proc.returncode != 0 or sink_proc.returncode != 0:
+            err_msg = "%s | %s => %s, %s" % (
+                " ".join(src_cmd), " ".join(sink_cmd),
+                src_proc.returncode, sink_proc.returncode)
+            err_msg += "\n%s\n%s" % (
+                b"".join(src_stderr).decode("utf-8", "replace"),
+                (sink_stderr or b"").decode("utf-8", "replace"))
+            if self.context.request:
+                err_msg += "\n%s" % self.context.request.url
+            raise FFmpegError(err_msg)
+
+    def _gif_legacy(self, src_file):
+        """The palettegen/paletteuse pipeline. Geometry is applied at the
+        target size in ffmpeg (rather than re-encoding at original resolution
+        and letting gifsicle resize), and output goes through a temp file
+        rather than buffering the whole animation on stdout. Because ffmpeg
+        performs all geometry, the gifsicle stage (when FFMPEG_USE_GIFSICLE_ENGINE
+        is on) is purely a geometry-free optimization pass."""
+        vf = ",".join(self.ffmpeg_vfilters) if self.ffmpeg_vfilters else "null"
+        input_flags = self._input_flags(src_file)
+
+        with named_tmp_file(suffix=".png") as palette_file:
+            self.run_cmd(
+                [self.ffmpeg_path, "-hide_banner"]
+                + input_flags
+                + [
+                    "-i", src_file,
+                    "-lavfi", "%s,palettegen" % vf,
+                    "-y", palette_file,
+                ]
+            )
+            with named_tmp_file(suffix=".gif") as out_file:
+                self.run_cmd(
+                    [self.ffmpeg_path, "-hide_banner"]
+                    + input_flags
+                    + [
+                        "-i", src_file,
+                        "-i", palette_file,
+                        "-lavfi", "%s[x];[x][1:v]paletteuse" % vf,
+                        "-f", "gif",
+                        "-y", out_file,
+                    ]
+                )
+                if self.use_gif_engine:
+                    return self._gifsicle_optimize_file(out_file)
+                with open(out_file, mode="rb") as f:
+                    return f.read()
+
+    def _gifsicle_optimize_file(self, src_path):
+        """Run a geometry-free ``gifsicle -O3`` (plus GIFSICLE_ARGS) over a
+        file on the scratch filesystem. Working file-to-file keeps the
+        whole-animation buffers out of the Python heap entirely: only the
+        final optimized bytes are ever read."""
+        gifsicle_path = (
+            getattr(self.context.server, "gifsicle_path", None)
+            or self.context.config.GIFSICLE_PATH
+            or which("gifsicle"))
+        if not gifsicle_path:
+            raise FFmpegError(
+                "a gifsicle optimization pass was requested (via "
+                "FFMPEG_USE_GIFSICLE_ENGINE or GIFSKI_GIFSICLE_PASS) but the "
+                "gifsicle binary cannot be found")
+        extra_args = [
+            str(arg) for arg in (self.context.config.GIFSICLE_ARGS or [])]
+        with named_tmp_file(suffix=".gif") as out_file:
+            self.run_cmd(
+                [gifsicle_path, "-O3"] + extra_args + [src_path, "-o", out_file])
+            with open(out_file, mode="rb") as f:
+                buf = f.read()
+        # Mirror thumbor's gif engine: make sure gifsicle produced a valid
+        # gif before returning it
+        try:
+            with BytesIO(buf) as verify_buf:
+                Image.open(verify_buf).verify()
+        except Exception:
+            raise FFmpegError(
+                "gifsicle produced invalid output for url `%s`"
+                % getattr(self.context.request, "url", None))
+        return buf
 
     @property
     def ffmpeg_vfilters(self):

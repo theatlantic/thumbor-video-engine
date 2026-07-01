@@ -103,8 +103,8 @@ async def test_config_handle_animated_gif_true_use_gif_engine(
 
     mocker.spy(GifEngine, 'load')
     mocker.spy(FFmpegEngine, 'load')
-    mocker.spy(GifEngine, 'resize')
     mocker.spy(FFmpegEngine, 'resize')
+    mocker.spy(FFmpegEngine, '_gifsicle_optimize_file')
 
     response = await http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
 
@@ -114,11 +114,15 @@ async def test_config_handle_animated_gif_true_use_gif_engine(
     im = Image.open(BytesIO(response.body))
     assert im.size == (100, 75)
 
-    assert GifEngine.load.call_count == 1
+    # Animated gifs are handled entirely by the ffmpeg engine. With
+    # FFMPEG_USE_GIFSICLE_ENGINE on, gifsicle runs as a geometry-free
+    # optimization pass over ffmpeg's target-size output rather than loading
+    # the full-resolution animation into thumbor's gif engine and replaying
+    # the resize there.
     assert FFmpegEngine.load.call_count == 1
-
-    GifEngine.resize.assert_called_with(mocker.ANY, 100, 75)
     FFmpegEngine.resize.assert_called_with(mocker.ANY, 100, 75)
+    assert FFmpegEngine._gifsicle_optimize_file.call_count == 1
+    assert GifEngine.load.call_count == 0
 
 
 @pytest.mark.asyncio
