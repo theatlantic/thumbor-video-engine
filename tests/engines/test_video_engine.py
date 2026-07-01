@@ -24,31 +24,31 @@ def config(config):
     return config
 
 
-@pytest.mark.gen_test
-def test_dispatch_to_video_engine(mocker, http_client, base_url):
+@pytest.mark.asyncio
+async def test_dispatch_to_video_engine(mocker, http_client, base_url):
     mocker.spy(FFmpegEngine, 'load')
 
-    response = yield http_client.fetch("%s/unsafe/hotdog.mp4" % base_url)
+    response = await http_client.fetch("%s/unsafe/hotdog.mp4" % base_url)
 
     assert response.code == 200
     assert FFmpegEngine.load.call_count == 1
     assert BaseEngine.get_mimetype(response.body) == 'video/mp4'
 
 
-@pytest.mark.gen_test
-def test_dispatch_to_image_engine(mocker, http_client, base_url):
+@pytest.mark.asyncio
+async def test_dispatch_to_image_engine(mocker, http_client, base_url):
     mocker.spy(PilEngine, 'load')
 
-    response = yield http_client.fetch("%s/unsafe/filters:format(jpg)/hotdog.png" % base_url)
+    response = await http_client.fetch("%s/unsafe/filters:format(jpg)/hotdog.png" % base_url)
 
     assert response.code == 200
     assert PilEngine.load.call_count == 1
     assert BaseEngine.get_mimetype(response.body) == 'image/jpeg'
 
 
-@pytest.mark.gen_test
-def test_fill_filter(http_client, base_url):
-    response = yield http_client.fetch(
+@pytest.mark.asyncio
+async def test_fill_filter(http_client, base_url):
+    response = await http_client.fetch(
         "%s/unsafe/filters:format(jpg):fill(ffff00,1)/hotdog-transparent.png" % base_url
     )
 
@@ -61,14 +61,14 @@ def test_fill_filter(http_client, base_url):
     assert_colors_similar(top_left_color, (255, 255, 0), "Fill not applied")
 
 
-@pytest.mark.gen_test
-def test_dispatch_non_animated_gif_to_gif_engine(mocker, config, http_client, base_url):
+@pytest.mark.asyncio
+async def test_dispatch_non_animated_gif_to_gif_engine(mocker, config, http_client, base_url):
     config.FFMPEG_USE_GIFSICLE_ENGINE = True
     config.FFMPEG_HANDLE_ANIMATED_GIF = True
 
     mocker.spy(GifEngine, 'load')
 
-    response = yield http_client.fetch("%s/unsafe/100x75/hotdog-still.gif" % base_url)
+    response = await http_client.fetch("%s/unsafe/100x75/hotdog-still.gif" % base_url)
 
     assert response.code == 200
     assert GifEngine.load.call_count == 1
@@ -78,14 +78,14 @@ def test_dispatch_non_animated_gif_to_gif_engine(mocker, config, http_client, ba
     assert im.size == (100, 75)
 
 
-@pytest.mark.gen_test
-def test_config_handle_animated_gif_false(mocker, config, http_client, base_url):
+@pytest.mark.asyncio
+async def test_config_handle_animated_gif_false(mocker, config, http_client, base_url):
     config.FFMPEG_USE_GIFSICLE_ENGINE = True
     config.FFMPEG_HANDLE_ANIMATED_GIF = False
 
     mocker.spy(GifEngine, 'load')
 
-    response = yield http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
+    response = await http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
 
     assert response.code == 200
     assert GifEngine.load.call_count == 1
@@ -95,8 +95,9 @@ def test_config_handle_animated_gif_false(mocker, config, http_client, base_url)
     assert im.size == (100, 75)
 
 
-@pytest.mark.gen_test
-def test_config_handle_animated_gif_true_use_gif_engine(mocker, config, http_client, base_url):
+@pytest.mark.asyncio
+async def test_config_handle_animated_gif_true_use_gif_engine(
+        mocker, config, http_client, base_url):
     config.FFMPEG_USE_GIFSICLE_ENGINE = True
     config.FFMPEG_HANDLE_ANIMATED_GIF = True
 
@@ -105,7 +106,7 @@ def test_config_handle_animated_gif_true_use_gif_engine(mocker, config, http_cli
     mocker.spy(GifEngine, 'resize')
     mocker.spy(FFmpegEngine, 'resize')
 
-    response = yield http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
+    response = await http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
 
     assert response.code == 200
     assert BaseEngine.get_mimetype(response.body) == 'image/gif'
@@ -120,8 +121,9 @@ def test_config_handle_animated_gif_true_use_gif_engine(mocker, config, http_cli
     FFmpegEngine.resize.assert_called_with(mocker.ANY, 100, 75)
 
 
-@pytest.mark.gen_test
-def test_config_handle_animated_gif_true_no_use_gif_engine(mocker, config, http_client, base_url):
+@pytest.mark.asyncio
+async def test_config_handle_animated_gif_true_no_use_gif_engine(
+        mocker, config, http_client, base_url):
     config.FFMPEG_USE_GIFSICLE_ENGINE = False
     config.FFMPEG_HANDLE_ANIMATED_GIF = True
 
@@ -130,7 +132,7 @@ def test_config_handle_animated_gif_true_no_use_gif_engine(mocker, config, http_
     mocker.spy(GifEngine, 'resize')
     mocker.spy(FFmpegEngine, 'resize')
 
-    response = yield http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
+    response = await http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
 
     assert response.code == 200
     assert BaseEngine.get_mimetype(response.body) == 'image/gif'

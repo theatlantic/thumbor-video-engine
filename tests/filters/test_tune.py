@@ -14,11 +14,11 @@ def config(config):
     return config
 
 
-@pytest.mark.gen_test(timeout=10)
-def test_h264_tune_filter(mocker, http_client, base_url, ffmpeg_path):
+@pytest.mark.asyncio
+async def test_h264_tune_filter(mocker, http_client, base_url, ffmpeg_path):
     mocker.spy(FFmpegEngine, 'run_cmd')
 
-    response = yield http_client.fetch(
+    response = await http_client.fetch(
         "%s/unsafe/filters:tune(animation)/hotdog.mp4" % base_url)
 
     assert response.code == 200
@@ -43,11 +43,11 @@ def test_h264_tune_filter(mocker, http_client, base_url, ffmpeg_path):
     assert expected == actual
 
 
-@pytest.mark.gen_test(timeout=10)
-def test_h265_tune_filter(mocker, http_client, base_url, ffmpeg_path):
+@pytest.mark.asyncio
+async def test_h265_tune_filter(mocker, http_client, base_url, ffmpeg_path):
     mocker.spy(FFmpegEngine, 'run_cmd')
 
-    response = yield http_client.fetch(
+    response = await http_client.fetch(
         "%s/unsafe/filters:tune(animation):format(h265)/hotdog.mp4" % base_url)
 
     assert response.code == 200

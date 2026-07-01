@@ -15,28 +15,28 @@ def config(config):
     return config
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize('subdir,accept', [
     ('default', '*/*'),
     ('auto_webp', 'image/webp'),
     ('auto_mp4', 'video/*'),
 ])
-def test_file_result_storage_save(config, http_client, base_url, tmp_path, subdir, accept):
+async def test_file_result_storage_save(config, http_client, base_url, tmp_path, subdir, accept):
     config.RESULT_STORAGE_FILE_STORAGE_ROOT_PATH = str(tmp_path)
-    response = yield http_client.fetch("%s/unsafe/hotdog.gif" % base_url,
+    response = await http_client.fetch("%s/unsafe/hotdog.gif" % base_url,
         headers={'Accept': accept})
     assert response.code == 200
     assert (tmp_path / subdir / "ba/68/88258f0b20357d15380b611a7b31da32f19b").exists()
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize('auto_gif', (False, True))
 @pytest.mark.parametrize('subdir,mime_type', [
     ('default', 'image/gif'),
     ('auto_webp', 'image/webp'),
     ('auto_mp4', 'video/mp4'),
 ])
-def test_file_result_storage_retrieve(config, mocker, http_client, base_url, tmp_path,
+async def test_file_result_storage_retrieve(config, mocker, http_client, base_url, tmp_path,
                                       storage_path, subdir, mime_type, auto_gif):
     config.RESULT_STORAGE_FILE_STORAGE_ROOT_PATH = str(tmp_path)
     config.AUTO_WEBP = auto_gif
@@ -57,7 +57,7 @@ def test_file_result_storage_retrieve(config, mocker, http_client, base_url, tmp
 
     mocker.spy(FFMpegEngine, "load")
 
-    response = yield http_client.fetch("%s/unsafe/hotdog.gif" % base_url,
+    response = await http_client.fetch("%s/unsafe/hotdog.gif" % base_url,
         headers={'Accept': mime_type})
     assert response.code == 200
     assert FFMpegEngine.load.call_count == 0
@@ -67,20 +67,20 @@ def test_file_result_storage_retrieve(config, mocker, http_client, base_url, tmp
     else:
         assert response.headers.get('vary') is None
 
-    response = yield http_client.fetch(
+    response = await http_client.fetch(
         "%s/unsafe/pbj-time.gif" % base_url,
         headers={'Accept': mime_type})
     assert response.code == 200
     assert FFMpegEngine.load.call_count == 1
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize('subdir,accept,ext', [
     ('', '*/*', 'gif'),
     ('/webp', 'image/webp', 'webp'),
     ('/mp4', 'video/*', 'mp4'),
 ])
-def test_file_result_storage_legacy_retrieve(
+async def test_file_result_storage_legacy_retrieve(
         config, mocker, http_client, base_url, tmp_path, storage_path, subdir, accept, ext):
     config.RESULT_STORAGE_FILE_STORAGE_ROOT_PATH = str(tmp_path)
 
@@ -94,12 +94,12 @@ def test_file_result_storage_legacy_retrieve(
 
     mocker.spy(FFMpegEngine, "load")
 
-    response = yield http_client.fetch("%s/unsafe/hotdog.gif" % base_url,
+    response = await http_client.fetch("%s/unsafe/hotdog.gif" % base_url,
         headers={'Accept': accept})
     assert response.code == 200
     assert FFMpegEngine.load.call_count == 0
 
-    response = yield http_client.fetch(
+    response = await http_client.fetch(
         "%s/unsafe/pbj-time.gif" % base_url,
         headers={'Accept': accept})
     assert response.code == 200

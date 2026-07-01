@@ -26,15 +26,15 @@ def gif_buffer(storage_path):
         return f.read()
 
 
-@pytest.mark.gen_test
-def test_operations_resize_colors(mocker, config, http_client, base_url):
+@pytest.mark.asyncio
+async def test_operations_resize_colors(mocker, config, http_client, base_url):
     config.FFMPEG_USE_GIFSICLE_ENGINE = True
     config.FFMPEG_HANDLE_ANIMATED_GIF = False
 
     mocker.spy(GifEngine, 'load')
     mocker.spy(GifEngine, 'run_gifsicle')
 
-    response = yield http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
+    response = await http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
 
     assert GifEngine.run_gifsicle.mock_calls == [
         mocker.call(mocker.ANY, '--info'),
@@ -83,8 +83,8 @@ def test_server_gifsicle_none_no_which_raises(mocker, context, gif_buffer):
     assert thumbor_video_engine.engines.gif.which.mock_calls == [mocker.call('gifsicle')]
 
 
-@pytest.mark.gen_test
-def test_gifsicle_args(mocker, config, http_client, base_url):
+@pytest.mark.asyncio
+async def test_gifsicle_args(mocker, config, http_client, base_url):
     config.FFMPEG_USE_GIFSICLE_ENGINE = True
     config.FFMPEG_HANDLE_ANIMATED_GIF = False
     config.GIFSICLE_ARGS = ["--careful"]
@@ -92,7 +92,7 @@ def test_gifsicle_args(mocker, config, http_client, base_url):
     mocker.spy(GifEngine, 'load')
     mocker.spy(BaseGifEngine, 'run_gifsicle')
 
-    response = yield http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
+    response = await http_client.fetch("%s/unsafe/100x75/hotdog.gif" % base_url)
 
     assert BaseGifEngine.run_gifsicle.mock_calls == [
         mocker.call(mocker.ANY, '--info --careful'),

@@ -17,14 +17,14 @@ def config(config):
     return config
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize('accepts_webp', (True, False))
 @pytest.mark.parametrize('ffmpeg_conf_gif_auto_webp', (True, False))
-def test_auto_webp_transcodes_anim_gif(http_client, base_url, accepts_webp,
+async def test_auto_webp_transcodes_anim_gif(http_client, base_url, accepts_webp,
                                        config, ffmpeg_conf_gif_auto_webp):
     config.FFMPEG_GIF_AUTO_WEBP = ffmpeg_conf_gif_auto_webp
 
-    response = yield http_client.fetch("%s/unsafe/hotdog.gif" % base_url,
+    response = await http_client.fetch("%s/unsafe/hotdog.gif" % base_url,
         headers=(WEBP_HEADERS if accepts_webp else {}))
 
     img_format = 'webp' if accepts_webp and ffmpeg_conf_gif_auto_webp else 'gif'

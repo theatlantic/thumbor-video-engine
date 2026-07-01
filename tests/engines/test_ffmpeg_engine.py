@@ -27,16 +27,16 @@ def test_source_height(context):
     assert engine.source_height == 150
 
 
-@pytest.mark.gen_test
-def test_error_handling(mocker, http_client, base_url):
+@pytest.mark.asyncio
+async def test_error_handling(mocker, http_client, base_url):
     with pytest.raises(HTTPClientError) as exc_info:
-        yield http_client.fetch("%s/unsafe/corrupt.mp4" % base_url)
+        await http_client.fetch("%s/unsafe/corrupt.mp4" % base_url)
     assert exc_info.value.code == 500
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize('has_ctx_request', [True, False])
-def test_error_handling_run_cmd(storage_path, mocker, context, has_ctx_request):
+async def test_error_handling_run_cmd(storage_path, mocker, context, has_ctx_request):
     if not has_ctx_request:
         context.request = None
     with open("%s/corrupt.mp4" % storage_path, mode='rb') as f:

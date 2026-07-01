@@ -19,18 +19,6 @@ import tornado.httpserver
 import tornado.httpclient
 
 
-@pytest_asyncio.fixture(autouse=True)
-async def io_loop(request):
-    io_loop = tornado.ioloop.IOLoop.current()
-    assert io_loop.asyncio_loop is asyncio.get_event_loop()
-
-    def _close():
-        io_loop.close(all_fds=True)
-
-    request.addfinalizer(_close)
-    return io_loop
-
-
 @pytest_asyncio.fixture
 async def http_server(_unused_port, app):
     server = tornado.httpserver.HTTPServer(app)
