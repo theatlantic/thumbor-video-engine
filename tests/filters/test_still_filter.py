@@ -17,10 +17,10 @@ def config(config):
     return config
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize('pos', ['', '00:00:00'])
-def test_still_filter(http_client, base_url, pos):
-    response = yield http_client.fetch(
+async def test_still_filter(http_client, base_url, pos):
+    response = await http_client.fetch(
         "%s/unsafe/filters:still(%s)/hotdog.mp4" % (base_url, pos))
 
     assert response.code == 200
@@ -29,14 +29,14 @@ def test_still_filter(http_client, base_url, pos):
     assert BaseEngine.get_mimetype(response.body) == 'image/jpeg'
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize('format,mime_type', [
     ('webp', 'image/webp'),
     ('jpg', 'image/jpeg'),
     ('zpg', 'image/jpeg'),
 ])
-def test_still_filter_with_format(http_client, base_url, format, mime_type):
-    response = yield http_client.fetch(
+async def test_still_filter_with_format(http_client, base_url, format, mime_type):
+    response = await http_client.fetch(
         "%s/unsafe/filters:still():format(%s)/hotdog.mp4" % (base_url, format))
 
     assert response.code == 200
@@ -45,9 +45,9 @@ def test_still_filter_with_format(http_client, base_url, format, mime_type):
     assert BaseEngine.get_mimetype(response.body) == mime_type
 
 
-@pytest.mark.gen_test
-def test_still_filter_with_watermark(http_client, base_url):
-    response = yield http_client.fetch(
+@pytest.mark.asyncio
+async def test_still_filter_with_watermark(http_client, base_url):
+    response = await http_client.fetch(
         "%s/unsafe/filters:still():format(png):"
         "watermark(watermark.png,0,0,0)/hotdog.mp4" % (base_url))
     assert response.code == 200

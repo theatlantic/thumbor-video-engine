@@ -1,5 +1,12 @@
+import asyncio
 import os
+
 import pytest
+import pytest_asyncio
+
+import tornado.httpclient
+import tornado.httpserver
+import tornado.testing
 
 from thumbor.config import Config
 from thumbor.context import Context, ServerParameters, RequestParameters
@@ -10,6 +17,11 @@ try:
     from shutil import which
 except ImportError:
     from thumbor.utils import which
+
+try:
+    from thumbor.context import ThreadPool
+except ImportError:  # pragma: no cover
+    ThreadPool = None
 
 try:
     from tests.mock_aio_server import s3_server, s3_client, session  # noqa
@@ -25,6 +37,18 @@ except:  # noqa
 
 
 CURR_DIR = os.path.abspath(os.path.dirname(__file__))
+
+
+@pytest.fixture(autouse=True)
+def reset_thumbor_threadpool():
+    """thumbor's ThreadPool is a process-wide singleton that can otherwise
+    hold a reference to a previous test's (now closed) event loop."""
+    if ThreadPool is not None and getattr(ThreadPool, "_instance", None):
+        for thread_pool in ThreadPool._instance.values():
+            thread_pool.cleanup()
+    yield
+    if ThreadPool is not None:
+        ThreadPool._instance = None
 
 
 @pytest.fixture
@@ -89,3 +113,35 @@ def context(config):
 @pytest.fixture
 def app(context):
     return get_application(context)
+
+
+@pytest.fixture
+def _unused_port():
+    return tornado.testing.bind_unused_port()
+
+
+@pytest.fixture
+def http_port(_unused_port):
+    return _unused_port[1]
+
+
+@pytest.fixture
+def base_url(http_port):
+    return "http://localhost:%d" % http_port
+
+
+@pytest_asyncio.fixture
+async def http_server(app, _unused_port):
+    server = tornado.httpserver.HTTPServer(app)
+    server.add_socket(_unused_port[0])
+    await asyncio.sleep(0)
+    yield server
+    server.stop()
+    await server.close_all_connections()
+
+
+@pytest_asyncio.fixture
+async def http_client(http_server):
+    client = tornado.httpclient.AsyncHTTPClient()
+    yield client
+    client.close()

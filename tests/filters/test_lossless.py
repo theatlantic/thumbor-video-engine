@@ -14,11 +14,11 @@ def config(config):
     return config
 
 
-@pytest.mark.gen_test(timeout=10)
-def test_webm_lossless_filter(mocker, http_client, base_url, ffmpeg_path):
+@pytest.mark.asyncio
+async def test_webm_lossless_filter(mocker, http_client, base_url, ffmpeg_path):
     mocker.spy(FFmpegEngine, 'run_cmd')
 
-    response = yield http_client.fetch(
+    response = await http_client.fetch(
         "%s/unsafe/filters:lossless()/hotdog.webm" % (base_url))
 
     FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)
@@ -43,11 +43,11 @@ def test_webm_lossless_filter(mocker, http_client, base_url, ffmpeg_path):
     assert expected == actual
 
 
-@pytest.mark.gen_test(timeout=15)
-def test_webp_lossless_filter(mocker, http_client, base_url, ffmpeg_path):
+@pytest.mark.asyncio
+async def test_webp_lossless_filter(mocker, http_client, base_url, ffmpeg_path):
     mocker.spy(FFmpegEngine, 'run_cmd')
 
-    response = yield http_client.fetch(
+    response = await http_client.fetch(
         "%s/unsafe/filters:lossless()/hotdog.webp" % (base_url))
 
     FFmpegEngine.run_cmd.assert_called_once_with(mocker.ANY, mocker.ANY)

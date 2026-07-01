@@ -13,12 +13,12 @@ def config(config):
     return config
 
 
-@pytest.mark.gen_test
-def test_crop(mocker, http_client, base_url):
+@pytest.mark.asyncio
+async def test_crop(mocker, http_client, base_url):
     mocker.spy(FFmpegEngine, 'crop')
     mocker.spy(FFmpegEngine, 'run_cmd')
 
-    response = yield http_client.fetch("%s/unsafe/50x25:150x125/hotdog.mp4" % base_url)
+    response = await http_client.fetch("%s/unsafe/50x25:150x125/hotdog.mp4" % base_url)
 
     assert response.code == 200
     assert response.headers.get('content-type') == 'video/mp4'
@@ -35,12 +35,12 @@ def test_crop(mocker, http_client, base_url):
     assert (file_info['width'], file_info['height']) == (100, 100)
 
 
-@pytest.mark.gen_test
-def test_flip_horizontally(mocker, http_client, base_url):
+@pytest.mark.asyncio
+async def test_flip_horizontally(mocker, http_client, base_url):
     mocker.spy(FFmpegEngine, 'flip_horizontally')
     mocker.spy(FFmpegEngine, 'run_cmd')
 
-    response = yield http_client.fetch("%s/unsafe/-200x150/hotdog.mp4" % base_url)
+    response = await http_client.fetch("%s/unsafe/-200x150/hotdog.mp4" % base_url)
 
     assert response.code == 200
     assert response.headers.get('content-type') == 'video/mp4'
@@ -57,12 +57,12 @@ def test_flip_horizontally(mocker, http_client, base_url):
     assert (file_info['width'], file_info['height']) == (200, 150)
 
 
-@pytest.mark.gen_test
-def test_flip_vertically(mocker, http_client, base_url):
+@pytest.mark.asyncio
+async def test_flip_vertically(mocker, http_client, base_url):
     mocker.spy(FFmpegEngine, 'flip_vertically')
     mocker.spy(FFmpegEngine, 'run_cmd')
 
-    response = yield http_client.fetch("%s/unsafe/200x-150/hotdog.mp4" % base_url)
+    response = await http_client.fetch("%s/unsafe/200x-150/hotdog.mp4" % base_url)
 
     assert response.code == 200
     assert response.headers.get('content-type') == 'video/mp4'
@@ -79,12 +79,12 @@ def test_flip_vertically(mocker, http_client, base_url):
     assert (file_info['width'], file_info['height']) == (200, 150)
 
 
-@pytest.mark.gen_test
-def test_filter_grayscale(mocker, http_client, base_url):
+@pytest.mark.asyncio
+async def test_filter_grayscale(mocker, http_client, base_url):
     mocker.spy(FFmpegEngine, 'convert_to_grayscale')
     mocker.spy(FFmpegEngine, 'run_cmd')
 
-    response = yield http_client.fetch("%s/unsafe/filters:grayscale()/hotdog.mp4" % base_url)
+    response = await http_client.fetch("%s/unsafe/filters:grayscale()/hotdog.mp4" % base_url)
 
     assert response.code == 200
     assert response.headers.get('content-type') == 'video/mp4'
@@ -101,12 +101,12 @@ def test_filter_grayscale(mocker, http_client, base_url):
     assert (file_info['width'], file_info['height']) == (200, 150)
 
 
-@pytest.mark.gen_test
-def test_filter_rotate(mocker, http_client, base_url):
+@pytest.mark.asyncio
+async def test_filter_rotate(mocker, http_client, base_url):
     mocker.spy(FFmpegEngine, 'rotate')
     mocker.spy(FFmpegEngine, 'run_cmd')
 
-    response = yield http_client.fetch("%s/unsafe/filters:rotate(90)/hotdog.mp4" % base_url)
+    response = await http_client.fetch("%s/unsafe/filters:rotate(90)/hotdog.mp4" % base_url)
 
     assert response.code == 200
     assert response.headers.get('content-type') == 'video/mp4'
@@ -123,14 +123,14 @@ def test_filter_rotate(mocker, http_client, base_url):
     assert (file_info['width'], file_info['height']) == (200, 150)
 
 
-@pytest.mark.gen_test
-def test_reorientate(mocker, config, http_client, base_url):
+@pytest.mark.asyncio
+async def test_reorientate(mocker, config, http_client, base_url):
     config.RESPECT_ORIENTATION = True
 
     mocker.spy(FFmpegEngine, 'reorientate')
     mocker.spy(FFmpegEngine, 'run_cmd')
 
-    response = yield http_client.fetch("%s/unsafe/hotdog.mp4" % base_url)
+    response = await http_client.fetch("%s/unsafe/hotdog.mp4" % base_url)
 
     assert response.code == 200
     assert response.headers.get('content-type') == 'video/mp4'

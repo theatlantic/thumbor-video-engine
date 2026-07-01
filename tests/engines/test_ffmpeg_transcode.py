@@ -13,14 +13,14 @@ def config(config):
     return config
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize("src_ext", ['gif', 'mp4', 'h265.mp4', 'webp', 'webm', 'mov'])
-def test_transcode_to_h264(http_client, base_url, src_ext):
+async def test_transcode_to_h264(http_client, base_url, src_ext):
     url_filter = "/filters:format(h264)" if src_ext else ""
     if src_ext is None:
         src_ext = "mp4"
 
-    response = yield http_client.fetch(
+    response = await http_client.fetch(
         "%s/unsafe%s/hotdog.%s" % (base_url, url_filter, src_ext))
 
     assert response.code == 200
@@ -38,10 +38,10 @@ def test_transcode_to_h264(http_client, base_url, src_ext):
     assert expected == actual
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize("src_ext", ['gif', 'mp4', 'h265.mp4', 'webp', 'webm'])
-def test_transcode_to_h265(http_client, base_url, src_ext):
-    response = yield http_client.fetch(
+async def test_transcode_to_h265(http_client, base_url, src_ext):
+    response = await http_client.fetch(
         "%s/unsafe/filters:format(h265)/hotdog.%s" % (base_url, src_ext))
 
     assert response.code == 200
@@ -59,14 +59,14 @@ def test_transcode_to_h265(http_client, base_url, src_ext):
     assert expected == actual
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize("src_ext", ['gif', 'mp4', 'h265.mp4', 'webp', 'webm', None])
-def test_transcode_to_webm(http_client, base_url, src_ext):
+async def test_transcode_to_webm(http_client, base_url, src_ext):
     url_filter = "/filters:format(webm)" if src_ext else ""
     if src_ext is None:
         src_ext = "webm"
 
-    response = yield http_client.fetch(
+    response = await http_client.fetch(
         "%s/unsafe%s/hotdog.%s" % (base_url, url_filter, src_ext))
 
     assert response.code == 200
@@ -84,20 +84,20 @@ def test_transcode_to_webm(http_client, base_url, src_ext):
     assert expected == actual
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize("src_ext", ['gif', 'mp4', 'h265.mp4', 'webp', 'webm', None])
 @pytest.mark.parametrize("config_key,config_val", [
     ('FFMPEG_USE_GIFSICLE_ENGINE', False),
     ('FFMPEG_USE_GIFSICLE_ENGINE', True),
 ])
-def test_transcode_to_gif(config_key, config_val, http_client, base_url, config, src_ext):
+async def test_transcode_to_gif(config_key, config_val, http_client, base_url, config, src_ext):
     setattr(config, config_key, config_val)
 
     url_filter = "/filters:format(gif)" if src_ext else ""
     if src_ext is None:
         src_ext = "gif"
 
-    response = yield http_client.fetch(
+    response = await http_client.fetch(
         "%s/unsafe%s/hotdog.%s" % (base_url, url_filter, src_ext))
 
     assert response.code == 200
@@ -115,10 +115,10 @@ def test_transcode_to_gif(config_key, config_val, http_client, base_url, config,
     assert expected == actual
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize("src_ext", ['gif', 'mp4', 'h265.mp4', 'webm', 'webp'])
-def test_transcode_to_webp(http_client, base_url, src_ext):
-    response = yield http_client.fetch(
+async def test_transcode_to_webp(http_client, base_url, src_ext):
+    response = await http_client.fetch(
         "%s/unsafe/filters:format(webp)/hotdog.%s" % (base_url, src_ext))
 
     assert response.code == 200
@@ -131,9 +131,9 @@ def test_transcode_to_webp(http_client, base_url, src_ext):
     assert im.size == (200, 150)
 
 
-@pytest.mark.gen_test
-def test_transcode_webp_variable_frame_durations(http_client, base_url):
-    response = yield http_client.fetch(
+@pytest.mark.asyncio
+async def test_transcode_webp_variable_frame_durations(http_client, base_url):
+    response = await http_client.fetch(
         "%s/unsafe/filters:format(webp)/hotdog-variable-frame-durations.webp" % base_url)
 
     assert response.code == 200
@@ -151,11 +151,11 @@ def test_transcode_webp_variable_frame_durations(http_client, base_url):
     assert im.info['duration'] == 120
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize("codec", ['h264', 'hevc'])
-def test_mp4_resize_odd_dimensions(http_client, base_url, codec):
+async def test_mp4_resize_odd_dimensions(http_client, base_url, codec):
     """h264 and h265 require videos to have width and height be even integers"""
-    response = yield http_client.fetch(
+    response = await http_client.fetch(
         "%s/unsafe/100x75/filters:format(%s)/hotdog.mp4" % (base_url, codec))
 
     assert response.code == 200
@@ -173,10 +173,10 @@ def test_mp4_resize_odd_dimensions(http_client, base_url, codec):
     assert expected == actual
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize("src_ext", ['gif', 'webp'])
-def test_alpha_transcode_to_webp(http_client, base_url, src_ext):
-    response = yield http_client.fetch(
+async def test_alpha_transcode_to_webp(http_client, base_url, src_ext):
+    response = await http_client.fetch(
         "%s/unsafe/filters:format(webp)/pbj-time.%s" % (base_url, src_ext))
 
     assert response.code == 200
@@ -193,10 +193,10 @@ def test_alpha_transcode_to_webp(http_client, base_url, src_ext):
     assert im.size == (200, 200)
 
 
-@pytest.mark.gen_test
+@pytest.mark.asyncio
 @pytest.mark.parametrize("src_ext", ['gif', 'webp'])
-def test_alpha_transcode_to_gif(http_client, base_url, src_ext):
-    response = yield http_client.fetch(
+async def test_alpha_transcode_to_gif(http_client, base_url, src_ext):
+    response = await http_client.fetch(
         "%s/unsafe/filters:format(gif)/pbj-time.%s" % (base_url, src_ext))
 
     assert response.code == 200
