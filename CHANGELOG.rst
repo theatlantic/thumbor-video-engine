@@ -1,7 +1,7 @@
 Changelog
 =========
 
-**Unreleased**
+**1.3.0 (Jul 13, 2026)**
 
 * Fixed: animated-gif transcodes no longer exhaust memory on large inputs.
   ``probe()`` now reads gif size and duration from a single-pass header parser
