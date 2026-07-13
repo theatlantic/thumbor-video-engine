@@ -186,6 +186,12 @@ class Engine(BaseEngine):
 
         self.probe()
 
+    def _route(self, label, method, src_file, *args):
+        """Dispatch to a gif-transcode route (``method``), labelled for
+        observability. Override to record per-route metrics/traces. Defaults
+        to simply calling the method."""
+        return method(src_file, *args)
+
     def has_transparency(self):
         if self.image:
             return has_transparency(self.image)
@@ -311,7 +317,7 @@ class Engine(BaseEngine):
         if (self.context.config.FFMPEG_GIF_PIPELINE == 'gifski'
                 and self._gifski_path() is not None):
             return self._transcode_to_gif_gifski(src_file)
-        return self._gif_legacy(src_file)
+        return self._route('legacy', self._gif_legacy, src_file)
 
     def _gifski_path(self):
         configured = self.context.config.GIFSKI_PATH
@@ -329,7 +335,7 @@ class Engine(BaseEngine):
         width, height = self.image_size
         max_target = self.context.config.GIFSKI_MAX_TARGET_PIXELS
         if max_target and width * height > max_target:
-            return self._gif_legacy(src_file)
+            return self._gifski_oversized_target(src_file)
 
         info = self.gif_info
         if info is None:
@@ -337,19 +343,29 @@ class Engine(BaseEngine):
                 # Animated webp input (or an unparseable gif that PIL could
                 # still open): per-frame timing is unknown to us, so use the
                 # timing-exact legacy path.
-                return self._gif_legacy(src_file)
+                return self._route('legacy', self._gif_legacy, src_file)
             # Video source: constant frame rate from ffprobe
-            return self._gifski_y4m(src_file, self._video_fps(), "0")
+            return self._route(
+                'y4m', self._gifski_y4m, src_file, self._video_fps(), "0")
 
         if not info.is_uniform_delay:
             # Variable frame delays can't be represented in a constant frame
             # rate y4m stream; the legacy path preserves them exactly.
-            return self._gif_legacy(src_file)
+            return self._route('legacy', self._gif_legacy, src_file)
 
         repeat = "-1" if info.loop_count is None else str(info.loop_count)
         if self._gif_visibly_transparent(info):
-            return self._gifski_png_frames(src_file, info.uniform_fps, repeat)
-        return self._gifski_y4m(src_file, info.uniform_fps, repeat)
+            return self._route(
+                'png', self._gifski_png_frames, src_file, info.uniform_fps, repeat)
+        return self._route(
+            'y4m', self._gifski_y4m, src_file, info.uniform_fps, repeat)
+
+    def _gifski_oversized_target(self, src_file):
+        """Chosen when the target output exceeds ``GIFSKI_MAX_TARGET_PIXELS``
+        (gifski's quantizer memory grows with output size). Override to serve
+        something faster (e.g. a quick low-quality pass with a background
+        re-encode). Defaults to the bounded-memory legacy path."""
+        return self._route('legacy_large', self._gif_legacy, src_file)
 
     def _gif_visibly_transparent(self, info):
         """GCE transparency flags over-approximate: optimized opaque GIFs
@@ -375,13 +391,30 @@ class Engine(BaseEngine):
             fps = DEFAULT_VIDEO_GIF_FPS
         return min(fps, MAX_VIDEO_GIF_FPS)
 
+    def _gifski_quality(self):
+        """Quality (1-100) passed to gifski. Override to vary it per request
+        (e.g. a low-quality fast pass)."""
+        return self.context.config.GIFSKI_QUALITY
+
+    def _gifski_extra_args(self):
+        """Extra flags for the gifski command (e.g. ``['--fast']``). Override
+        to add them; defaults to none."""
+        return []
+
+    def _gifski_gifsicle_pass(self):
+        """Whether to run a final geometry-free ``gifsicle -O3`` pass over
+        gifski's output. Override to vary it per request (e.g. skip it for a
+        quick low-quality pass). Defaults to the ``GIFSKI_GIFSICLE_PASS``
+        config."""
+        return self.context.config.GIFSKI_GIFSICLE_PASS
+
     def _gifski_cmd(self, out_file, fps):
-        config = self.context.config
         width, height = self.image_size
         return [
             self._gifski_path(),
             "--quiet",
-            "--quality", "%s" % config.GIFSKI_QUALITY,
+            "--quality", "%s" % self._gifski_quality(),
+        ] + self._gifski_extra_args() + [
             "--fps", "%g" % float(fps),
             # gifski caps output at ~800x600 unless explicitly sized; frames
             # are already scaled to exactly this size by ffmpeg
@@ -407,7 +440,7 @@ class Engine(BaseEngine):
         with named_tmp_file(suffix=".gif") as out_file:
             gifski_cmd = self._gifski_cmd(out_file, fps) + ["--repeat", repeat, "-"]
             self._run_pipeline(ffmpeg_cmd, gifski_cmd)
-            if self.context.config.GIFSKI_GIFSICLE_PASS:
+            if self._gifski_gifsicle_pass():
                 return self._gifsicle_optimize_file(out_file)
             with open(out_file, mode="rb") as f:
                 return f.read()
@@ -441,7 +474,7 @@ class Engine(BaseEngine):
                     + frame_files
                 )
                 self.run_cmd(gifski_cmd)
-                if self.context.config.GIFSKI_GIFSICLE_PASS:
+                if self._gifski_gifsicle_pass():
                     return self._gifsicle_optimize_file(out_file)
                 with open(out_file, mode="rb") as f:
                     return f.read()
