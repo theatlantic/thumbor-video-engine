@@ -35,6 +35,62 @@ Config.define(
     'Video')
 
 Config.define(
+    'FFMPEG_GIF_PIPELINE',
+    'legacy',
+    "Which GIF->GIF transcode pipeline to use. 'legacy' uses the "
+    "palettegen/paletteuse pipeline (scaling to the target size in ffmpeg, "
+    "with on-disk intermediates and, when FFMPEG_USE_GIFSICLE_ENGINE is on, "
+    "a final geometry-free gifsicle -O3 optimization pass). 'gifski' streams "
+    "frames from ffmpeg into the gifski encoder at the target size, falling "
+    "back to the legacy path for inputs gifski cannot represent (variable "
+    "frame delays) or when the gifski binary is not available.",
+    'Video')
+
+Config.define(
+    'GIFSKI_PATH',
+    None,
+    'Path to the gifski binary. If None, gifski is looked up on PATH. Only '
+    'used when FFMPEG_GIF_PIPELINE is "gifski". Note: gifski is licensed '
+    'under the AGPL-3.0; it is invoked as an unmodified subprocess and is '
+    'never a hard dependency of this package.',
+    'Video')
+
+Config.define(
+    'GIFSKI_QUALITY',
+    90,
+    'Quality (1-100) passed to gifski (--quality) when encoding GIFs',
+    'Video')
+
+Config.define(
+    'GIFSKI_MAX_TARGET_PIXELS',
+    1440000,
+    'Above this output size (target width * height), the gifski pipeline '
+    'routes through the legacy palettegen/paletteuse + gifsicle path '
+    "instead. gifski's quantizer working set grows with output dimensions "
+    "while the legacy path's memory stays bounded, at the cost of wall "
+    'time. A value of 0 disables the switch. Defaults to 1440000 (1600x900).',
+    'Video')
+
+Config.define(
+    'GIFSKI_GIFSICLE_PASS',
+    False,
+    'If True, run a final geometry-free gifsicle -O3 pass (plus '
+    'GIFSICLE_ARGS, e.g. --lossy) over gifski output to reduce file size',
+    'Video')
+
+Config.define(
+    'MAX_ANIMATED_GIF_PIXELS',
+    0,
+    'Maximum total pixels (width * height * frame_count) for an animated GIF '
+    'that is being transcoded to GIF. Sources over this limit fail with a 400 '
+    "response (thumbor's MAX_PIXELS is per-frame and does not bound frame "
+    'count). Only the gif->gif path is gated; conversions of a GIF source to '
+    'video/webp/avif are memory-bounded and are the efficient way to serve '
+    'large animated gifs, so they are not affected. A value of 0 (the default) '
+    'disables the check.',
+    'Video')
+
+Config.define(
     'FFMPEG_HANDLE_ANIMATED_GIF',
     True,
     'Whether to process animated gifs with the ffmpeg engine',
@@ -52,12 +108,6 @@ Config.define(
     'FFPROBE_PATH',
     '/usr/local/bin/ffprobe',
     'Path for the ffprobe binary',
-    'Video')
-
-Config.define(
-    'FFMPEG_H264_TWO_PASS',
-    False,
-    'Whether to use two-pass encoding for h264 in ffmpeg',
     'Video')
 
 Config.define(

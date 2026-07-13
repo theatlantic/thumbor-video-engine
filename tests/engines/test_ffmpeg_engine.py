@@ -63,3 +63,16 @@ def test_invalid_output_format(context, mp4_buffer):
     with pytest.raises(FFmpegError) as exc:
         engine.read('.mp4', 80)
     assert str(exc.value) == "Invalid video format 'xyz' requested"
+
+
+def test_gifsicle_optimize_missing_binary_raises_clear_error(monkeypatch, context):
+    import thumbor_video_engine.engines.ffmpeg as ffmpeg_module
+
+    monkeypatch.setattr(ffmpeg_module, 'which', lambda *a, **k: None)
+    context.server.gifsicle_path = None
+    context.config.GIFSICLE_PATH = None
+
+    engine = FFmpegEngine(context)
+    with pytest.raises(FFmpegError) as exc:
+        engine._gifsicle_optimize_file('/nonexistent/input.gif')
+    assert 'gifsicle' in str(exc.value)

@@ -41,6 +41,10 @@ jobs:
           sudo make install
           rm -rf gifsicle-${{ env.GIFSICLE_VER }}
 
+      - name: Install gifski
+        run: |
+          cargo install gifski
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
