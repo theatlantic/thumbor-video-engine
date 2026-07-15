@@ -1,6 +1,11 @@
 Changelog
 =========
 
+**1.3.1 (Jul 15, 2026)**
+
+* Renamed the misleadingly-named ``_route`` method on the ffmpeg engine to
+  ``_gif_route``.
+
 **1.3.0 (Jul 13, 2026)**
 
 * Fixed: animated-gif transcodes no longer exhaust memory on large inputs.

@@ -17,9 +17,9 @@ def test_route_hook_labels_each_gifski_route(context, storage_path, mocker):
     routes = []
 
     class RecordingEngine(FFmpegEngine):
-        def _route(self, label, method, src_file, *args):
+        def _gif_route(self, label, method, src_file, *args):
             routes.append(label)
-            return super()._route(label, method, src_file, *args)
+            return super()._gif_route(label, method, src_file, *args)
 
     context.config.FFMPEG_GIF_PIPELINE = "gifski"
     engine = RecordingEngine(context)
@@ -36,7 +36,7 @@ def test_route_hook_used_for_legacy(context, storage_path, mocker):
     routes = []
 
     class RecordingEngine(FFmpegEngine):
-        def _route(self, label, method, src_file, *args):
+        def _gif_route(self, label, method, src_file, *args):
             routes.append(label)
             return b"gif"
 

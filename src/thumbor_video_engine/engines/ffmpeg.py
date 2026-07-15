@@ -186,7 +186,7 @@ class Engine(BaseEngine):
 
         self.probe()
 
-    def _route(self, label, method, src_file, *args):
+    def _gif_route(self, label, method, src_file, *args):
         """Dispatch to a gif-transcode route (``method``), labelled for
         observability. Override to record per-route metrics/traces. Defaults
         to simply calling the method."""
@@ -317,7 +317,7 @@ class Engine(BaseEngine):
         if (self.context.config.FFMPEG_GIF_PIPELINE == 'gifski'
                 and self._gifski_path() is not None):
             return self._transcode_to_gif_gifski(src_file)
-        return self._route('legacy', self._gif_legacy, src_file)
+        return self._gif_route('legacy', self._gif_legacy, src_file)
 
     def _gifski_path(self):
         configured = self.context.config.GIFSKI_PATH
@@ -343,21 +343,21 @@ class Engine(BaseEngine):
                 # Animated webp input (or an unparseable gif that PIL could
                 # still open): per-frame timing is unknown to us, so use the
                 # timing-exact legacy path.
-                return self._route('legacy', self._gif_legacy, src_file)
+                return self._gif_route('legacy', self._gif_legacy, src_file)
             # Video source: constant frame rate from ffprobe
-            return self._route(
+            return self._gif_route(
                 'y4m', self._gifski_y4m, src_file, self._video_fps(), "0")
 
         if not info.is_uniform_delay:
             # Variable frame delays can't be represented in a constant frame
             # rate y4m stream; the legacy path preserves them exactly.
-            return self._route('legacy', self._gif_legacy, src_file)
+            return self._gif_route('legacy', self._gif_legacy, src_file)
 
         repeat = "-1" if info.loop_count is None else str(info.loop_count)
         if self._gif_visibly_transparent(info):
-            return self._route(
+            return self._gif_route(
                 'png', self._gifski_png_frames, src_file, info.uniform_fps, repeat)
-        return self._route(
+        return self._gif_route(
             'y4m', self._gifski_y4m, src_file, info.uniform_fps, repeat)
 
     def _gifski_oversized_target(self, src_file):
@@ -365,7 +365,7 @@ class Engine(BaseEngine):
         (gifski's quantizer memory grows with output size). Override to serve
         something faster (e.g. a quick low-quality pass with a background
         re-encode). Defaults to the bounded-memory legacy path."""
-        return self._route('legacy_large', self._gif_legacy, src_file)
+        return self._gif_route('legacy_large', self._gif_legacy, src_file)
 
     def _gif_visibly_transparent(self, info):
         """GCE transparency flags over-approximate: optimized opaque GIFs
