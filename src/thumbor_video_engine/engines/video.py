@@ -80,7 +80,7 @@ class Engine(object):
             return self.ffmpeg_engine
         elif is_gif and self.use_gif_engine:
             return self.context.modules.gif_engine
-        elif mime.startswith('video/'):
+        elif mime is not None and mime.startswith('video/'):
             return self.ffmpeg_engine
         else:
             return self.image_engine

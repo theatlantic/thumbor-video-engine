@@ -184,3 +184,10 @@ def test_engine_properties(mocker, context, attr, cls, call_count):
         val = getattr(video_engine, attr)
         assert isinstance(val, cls)
     assert context.modules.importer.import_item.call_count == call_count
+
+
+def test_get_engine_falls_back_to_image_engine_when_mime_is_none(mocker, context):
+    mocker.patch.object(BaseEngine, 'get_mimetype', return_value=None)
+    video_engine = VideoEngine(context)
+    engine = video_engine.get_engine(b'not a real file', '.bmp')
+    assert isinstance(engine, PilEngine)
