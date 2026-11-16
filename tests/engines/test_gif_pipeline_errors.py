@@ -36,6 +36,23 @@ def test_video_fps_fallbacks(context, src_rate, expected):
     assert engine._video_fps() == expected
 
 
+@pytest.mark.parametrize(
+    "loop_count,expected",
+    [
+        (None, "-1"),  # no NETSCAPE extension -> play once
+        (0, "0"),  # loop forever
+        (1, "1"),  # loop once
+        (3, "3"),  # ordinary finite count
+        (32767, "32767"),  # gifski's signed max, passed through verbatim
+        (32768, "0"),  # just past the signed max -> treat as forever
+        (65535, "0"),  # unsigned max "loop forever" sentinel (the crashing case)
+    ],
+)
+def test_gifski_repeat_mapping(context, loop_count, expected):
+    engine = FFmpegEngine(context)
+    assert engine._gifski_repeat(loop_count) == expected
+
+
 def test_visibly_transparent_no_flags_short_circuits(context, mocker):
     engine = FFmpegEngine(context)
     has_transparency = mocker.patch.object(

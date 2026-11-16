@@ -1,6 +1,16 @@
 Changelog
 =========
 
+**1.3.2 (unreleased)**
+
+* Fixed: the ``gifski`` gif pipeline no longer crashes on source gifs whose
+  NETSCAPE loop count exceeds gifski's signed 16-bit ``--repeat`` range. A gif
+  loop count is an unsigned 16-bit field (0 = loop forever), but gifski's
+  ``--repeat`` is signed (``-32768..=32767``); a source count above 32767 --
+  most commonly ``65535``, the "loop forever" sentinel many encoders emit --
+  was passed through verbatim and rejected by gifski. Such counts are now
+  mapped to ``0`` (loop forever), preserving the intended behavior.
+
 **1.3.1 (Jul 15, 2026)**
 
 * Renamed the misleadingly-named ``_route`` method on the ffmpeg engine to

@@ -27,6 +27,10 @@ from thumbor_video_engine.utils import (
 MAX_VIDEO_GIF_FPS = Fraction(50)
 DEFAULT_VIDEO_GIF_FPS = Fraction(20)
 
+# gifski's --repeat is a signed 16-bit int; a GIF loop count is an unsigned
+# 16-bit field, so counts above this can't be passed through verbatim.
+GIFSKI_MAX_REPEAT = 32767
+
 
 FORMATS = {
     '.mp4': 'mp4',
@@ -353,7 +357,7 @@ class Engine(BaseEngine):
             # rate y4m stream; the legacy path preserves them exactly.
             return self._gif_route('legacy', self._gif_legacy, src_file)
 
-        repeat = "-1" if info.loop_count is None else str(info.loop_count)
+        repeat = self._gifski_repeat(info.loop_count)
         if self._gif_visibly_transparent(info):
             return self._gif_route(
                 'png', self._gifski_png_frames, src_file, info.uniform_fps, repeat)
@@ -390,6 +394,25 @@ class Engine(BaseEngine):
         if fps <= 0:
             fps = DEFAULT_VIDEO_GIF_FPS
         return min(fps, MAX_VIDEO_GIF_FPS)
+
+    def _gifski_repeat(self, loop_count):
+        """Map a GIF's NETSCAPE loop count to gifski's ``--repeat`` argument.
+
+        The two encode looping differently. gifski's ``--repeat`` is a signed
+        16-bit value: ``-1`` plays once, ``0`` loops forever, ``N`` loops N
+        times. A GIF's loop count is an *unsigned* 16-bit field with no
+        play-once state: ``0`` loops forever, ``N`` loops N times, and the
+        absence of a NETSCAPE extension (``loop_count is None``) is what means
+        play once. Loop counts above gifski's signed max can't be passed
+        through, so treat them as forever -- which is what such large counts
+        mean in practice (65535, the unsigned max, is the common "loop
+        forever" sentinel encoders emit when they can't write anything bigger).
+        """
+        if loop_count is None:
+            return "-1"
+        if loop_count == 0 or loop_count > GIFSKI_MAX_REPEAT:
+            return "0"
+        return str(loop_count)
 
     def _gifski_quality(self):
         """Quality (1-100) passed to gifski. Override to vary it per request

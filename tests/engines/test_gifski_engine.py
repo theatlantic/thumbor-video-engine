@@ -34,6 +34,16 @@ def storage_path(tmp_path, storage_path):
         duration=[300, 100, 500, 200],
         loop=0,
     )
+    # A uniform-delay gif whose NETSCAPE loop count is the unsigned-16-bit max
+    # (65535). Its "loop forever" sentinel exceeds gifski's signed --repeat
+    # range and used to crash the encoder (see _gifski_repeat).
+    frames[0].save(
+        str(tmp_path / "loop65535.gif"),
+        save_all=True,
+        append_images=frames[1:],
+        duration=100,
+        loop=65535,
+    )
     return str(tmp_path)
 
 
@@ -85,6 +95,29 @@ async def test_resize_uses_y4m_route(mocker, config, http_client, base_url):
 
     assert y4m_spy.call_count == 1
     assert png_spy.call_count == 0
+    assert legacy_spy.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_loop_count_over_gifski_max_loops_forever(
+        mocker, config, http_client, base_url):
+    # regression: a source loop count above gifski's signed --repeat max
+    # (here 65535) crashed the encoder ("not in -32768..=32767"). It must now
+    # transcode via gifski and loop forever.
+    y4m_spy = mocker.spy(FFmpegEngine, "_gifski_y4m")
+    legacy_spy = mocker.spy(FFmpegEngine, "_gif_legacy")
+
+    response = await http_client.fetch(
+        "%s/unsafe/32x32/loop65535.gif" % base_url, headers=GIF_HEADERS)
+
+    assert response.code == 200
+    assert response.headers.get("content-type") == "image/gif"
+    im = open_gif(response.body)
+    assert im.size == (32, 32)
+    assert im.is_animated
+    assert im.info.get("loop") == 0  # forever
+
+    assert y4m_spy.call_count == 1
     assert legacy_spy.call_count == 0
 
 
