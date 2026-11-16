@@ -1,6 +1,15 @@
 Changelog
 =========
 
+**1.3.2 (Nov 16, 2026)**
+
+* Fixed: fall back to PIL engine when mime is ``None``. Merge of `#43`_, fixes
+  `#27`_. Thanks `@mpdude`_!
+
+.. _#43: https://github.com/theatlantic/thumbor-video-engine/pull/43
+.. _#27: https://github.com/theatlantic/thumbor-video-engine/issues/27
+.. _@mpdude: https://github.com/mpdude
+
 **1.3.1 (Jul 15, 2026)**
 
 * Renamed the misleadingly-named ``_route`` method on the ffmpeg engine to
