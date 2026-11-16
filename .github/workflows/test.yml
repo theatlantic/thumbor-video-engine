@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     runs-on: ubuntu-latest
     name: Python ${{ matrix.python-version }}
 
@@ -18,10 +18,10 @@ jobs:
       GIFSICLE_VER: 1.92
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -61,7 +61,7 @@ jobs:
 
       - name: Upload junit xml
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: junit-reports-${{ matrix.python-version }}
           path: reports/*.xml
@@ -70,7 +70,7 @@ jobs:
         run: tox -e coverage-report
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7
         with:
           file: ./coverage.xml
           name: ${{ github.workflow }}
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "Report Test Results"
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           pattern: junit-reports-*
           merge-multiple: true
